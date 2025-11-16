@@ -1,0 +1,46 @@
+services:
+  model-service:
+    build: ./model-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./model-service:/app
+      - model-cache:/root/.cache
+    environment:
+      - MODEL_SERVICE_PORT=8001
+    networks:
+      - music-gen-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - BACKEND_PORT=8000
+      - MODEL_SERVICE_URL=http://model-service:8001
+    depends_on:
+      - model-service
+    networks:
+      - music-gen-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - music-gen-network
+
+volumes:
+  model-cache:
+
+networks:
+  music-gen-network:
+    driver: bridge
+
