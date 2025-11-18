@@ -1,134 +1,385 @@
-# Music Generation Web Application
+# OMG - Open Music Generator
 
-A web application for generating music using AI models (starting with ACE-Step) with a microservices architecture.
+**An open and free music generation application for the 39C3 power circus.**
+
+OMG (Open Music Generator) is a web application that generates original music and lyrics using exclusively open-source AI models. Built for the 39th Chaos Communication Congress (39C3), this project embodies the hacker ethos: open, free, and hackable.
+
+## Background
+
+### The 39C3 Power Circus Project
+
+39C3 is this year's edition of the world's largest hacker convention, the **Chaos Communication Congress**. More than a congress, this is **5 days of a community-driven, utopian cyberpunk world for the whole family**—a gathering where hackers, makers, artists, and curious minds come together to share knowledge, build projects, and create something extraordinary.
+
+As part of the c-base hackerspace and the Chaos Computer Family, we're combining **circus with chaos**—bringing together the art of performance with the spirit of hacking. This means open-sourcing everything: lighted prop building including 3D prints, chip designs, and embedded software.
+
+We're planning a circus show at the congress and spreading the fun of juggling throughout the event. However, we were **lacking music for the show**. Creating original music that fits the energy and spirit of our performance is essential, but traditional music production can be expensive and restrictive.
+
+### The Open Source Solution
+
+That's where **AI comes into play**. However, we want to keep all components **free and hackable**, so we're focused exclusively on **Open Source Networks**. No proprietary models, no locked APIs, no restrictions—just pure, open-source technology that anyone can use, modify, and improve.
+
+This project embodies the hacker spirit: building something useful, sharing it freely, and making it better together.
 
 ## Architecture
 
-- **Frontend**: Vue.js application for user interface
-- **Backend API**: FastAPI service that orchestrates requests
-- **Model Service**: FastAPI microservice running ACE-Step model locally
+OMG uses a **three-tier microservices architecture** that separates concerns and allows for independent scaling and development of each component.
+
+### System Overview
+
+```
+┌─────────────────┐
+│   Frontend      │  Vue.js Application (Port 5173)
+│   (Vue.js)      │  - User interface
+│                 │  - Music player
+│                 │  - Job queue visualization
+└────────┬────────┘
+         │ HTTP/REST
+         ▼
+┌─────────────────────────────────────────┐
+│         Backend API                     │
+│         (FastAPI, Port 8000)            │
+│  ┌──────────────┐  ┌──────────────────┐ │
+│  │ JobManager   │  │  LyricsService   │ │
+│  │              │  │                  │ │
+│  │ Manages jobs │  │ Handles lyrics   │ │
+│  │ & queue      │  │ generation       │ │
+│  └──────┬───────┘  └──────────────────┘ │
+│         │                               │
+│  ┌──────▼───────┐  ┌──────────────────┐ │
+│  │ ModelClient  │  │  PromptBuilder   │ │
+│  │              │  │                  │ │
+│  │ Communicates │  │ Constructs       │ │
+│  │ with models  │  │ model prompts    │ │
+│  └──────┬───────┘  └──────────────────┘ │
+└─────────┼───────────────────────────────┘
+          │ HTTP/REST
+          ▼
+┌─────────────────────────────────────────┐
+│      Model Service                      │
+│      (FastAPI, Port 8001)               │
+│                                         │
+│  ┌────────────────────────────────────┐ │
+│  │  Music Generation Models           │ │
+│  │  ┌──────────┐  ┌──────────────┐    │ │
+│  │  │ACE-Step  │  │SongGeneration│    │ │
+│  │  │          │  │ (Tencent)    │    │ │
+│  │  │Text-to-  │  │ Alternative  │    │ │
+│  │  │Music     │  │ Music Model  │    │ │
+│  │  └──────────┘  └──────────────┘    │ │
+│  └────────────────────────────────────┘ │
+│                                         │
+│  ┌────────────────────────────────────┐ │
+│  │  Lyrics Generation                 │ │
+│  │  ┌──────────────────────────────┐  │ │
+│  │  │ Mistral/Ministral-3b-instruct│  │ │
+│  │  │ Large Language Model         │  │ │
+│  │  │ (Runs in subprocess)         │  │ │
+│  │  └──────────────────────────────┘  │ │
+│  └────────────────────────────────────┘ │
+│                                         │
+│  ┌────────────────────────────────────┐ │
+│  │  GenerationJob & Resource Mgmt     │ │
+│  │  - Async music generation          │ │
+│  │  - GPU/CPU allocation              │ │
+│  └────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+### Component Details
+
+#### Frontend (Vue.js)
+- **Technology**: Vue 3, Vue Router, Vite
+- **Port**: 5173
+- **Features**:
+  - Interactive music generation form
+  - Real-time job status polling
+  - Audio player with playback controls
+  - Queue visualization
+  - Download functionality
+  - Responsive design with 39C3 theme
+
+#### Backend API (FastAPI)
+- **Technology**: FastAPI, Python 3.13+, httpx
+- **Port**: 8000
+- **Services**:
+  - **JobManager**: Manages generation jobs and queue state
+  - **LyricsService**: Handles lyrics generation requests to model service
+  - **ModelClient**: HTTP client for communicating with model service
+  - **PromptBuilder**: Constructs prompts for AI models
+- **Endpoints**:
+  - `/api/v1/generate` - Start music generation
+  - `/api/v1/jobs` - Job status and management
+  - `/api/v1/audio` - Audio file retrieval
+
+#### Model Service (FastAPI)
+- **Technology**: FastAPI, PyTorch, Transformers, Python 3.11-3.12
+- **Port**: 8001
+- **Models**:
+  - **Music Generation**:
+    - **ACE-Step**: Text-to-music generation (default provider)
+    - **SongGeneration (Tencent LeVo)**: Alternative music generation model
+    - Provider switching via `MUSIC_PROVIDER` environment variable
+  - **Lyrics Generation**:
+    - **Mistral/Ministral-3b-instruct**: Large language model for lyrics
+    - Runs in subprocess per request for proper resource cleanup
+- **Endpoints**:
+  - `/model/v1/generate` - Music generation
+  - `/model/v1/lyrics/generate` - Lyrics generation
+
+### Data Flow
+
+1. **User Request**: User submits form in frontend with style, topic, duration, etc.
+2. **Backend Processing**: Backend creates job, builds prompts, and forwards to model service
+3. **Lyrics Generation** (if needed): Model service generates lyrics using Mistral model
+4. **Music Generation**: Model service generates music using selected provider (ACE-Step or SongGeneration)
+5. **Response**: Generated audio files are returned through backend to frontend
+6. **Playback**: User can play, download, or regenerate versions
 
 ## Project Structure
 
 ```
 omg/
-├── frontend/          # Vue.js application
-├── backend/           # Main FastAPI application
-├── model-service/     # ACE-Step microservice
-└── docker-compose.yml # Service orchestration
+├── frontend/              # Vue.js application
+│   ├── src/
+│   │   ├── components/    # Vue components (MusicForm, MusicPlayer, etc.)
+│   │   ├── views/         # Page views (Home, Background, Architecture, Links)
+│   │   ├── router/         # Vue Router configuration
+│   │   └── services/      # API client services
+│   ├── public/            # Static assets
+│   └── package.json       # Node.js dependencies
+│
+├── backend/               # FastAPI orchestration service
+│   ├── app/
+│   │   ├── api/           # API endpoints
+│   │   ├── services/      # Business logic (JobManager, LyricsService, etc.)
+│   │   └── models/        # Pydantic schemas
+│   └── pyproject.toml     # Python dependencies (uv)
+│
+├── model-service/         # FastAPI model service
+│   ├── app/
+│   │   ├── api/           # Model service endpoints
+│   │   ├── models/        # AI model implementations
+│   │   │   ├── ace_step.py
+│   │   │   ├── song_generation.py
+│   │   │   └── mistral_lyrics.py
+│   │   ├── services/      # Generation job management
+│   │   └── core.py         # Model provider switching
+│   └── pyproject.toml     # Python dependencies (uv)
+│
+├── docker-compose.yml      # Service orchestration
+└── README.md              # This file
 ```
 
 ## Setup
 
 ### Prerequisites
 
-- Python 3.9+
-- Node.js 18+
-- uv (Python package manager) - Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- Docker and Docker Compose (optional)
+- **Python**: 
+  - Backend: 3.13+
+  - Model Service: 3.11 only (>=3.11,<3.12)
+- **Node.js**: 18+
+- **uv**: Python package manager - Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Docker and Docker Compose** (optional, for containerized deployment)
 
 ### Development Setup
 
-1. **Model Service**:
-   ```bash
-   cd model-service
-   # Install uv if not already installed: curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv sync
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+#### 1. Model Service
 
-2. **Backend**:
-   ```bash
-   cd backend
-   # Install uv if not already installed: curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv sync
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+```bash
+cd model-service
+uv sync
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-3. **Frontend**:
-   ```bash
-   cd frontend
-   npm install
-   ```
+**Model Setup Notes**:
+- **ACE-Step**: The implementation provides infrastructure, but you may need to configure the actual model checkpoint path via `ACE_STEP_MODEL_PATH` environment variable
+- **SongGeneration**: Requires the official Tencent repository to be cloned and configured. See `model-service/app/models/song_generation.py` for setup instructions
+- **Mistral**: Automatically downloads from HuggingFace on first use (default: `ministral/Ministral-3b-instruct`)
+
+#### 2. Backend
+
+```bash
+cd backend
+uv sync
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+#### 3. Frontend
+
+```bash
+cd frontend
+npm install
+```
 
 ### Running Services
 
-1. Start model service:
-   ```bash
-   cd model-service
-   uvicorn app.main:app --host 0.0.0.0 --port 8001
-   ```
+#### Option 1: Manual (Development)
 
-2. Start backend API:
-   ```bash
-   cd backend
-   uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
+**Terminal 1 - Model Service**:
+```bash
+cd model-service
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
 
-3. Start frontend:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+**Terminal 2 - Backend API**:
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-### Docker Compose
+**Terminal 3 - Frontend**:
+```bash
+cd frontend
+npm run dev
+```
+
+#### Option 2: Docker Compose
 
 ```bash
 docker-compose up
 ```
 
-## API Documentation
+### Access Points
 
-- Backend API: http://localhost:8000/docs
-- Model Service: http://localhost:8001/docs
+- **Frontend**: http://localhost:5173
+- **Backend API Docs**: http://localhost:8000/docs
+- **Model Service Docs**: http://localhost:8001/docs
 
 ## Environment Variables
 
 ### Model Service
+
 - `MODEL_SERVICE_PORT`: Port to run on (default: 8001)
+- `MUSIC_PROVIDER`: Music generation provider - `"ace-step"` or `"song-generation"` (default: `"ace-step"`)
 - `ACE_STEP_MODEL_PATH`: Path to ACE-Step model checkpoint (optional)
-- `DEVICE`: Device to use ('cpu' or 'cuda', default: 'cpu')
+- `SONG_GENERATION_REPO_PATH`: Path to cloned SongGeneration repository (required for SongGeneration provider)
+- `SONG_GENERATION_MODEL_ID`: HuggingFace model ID or local path (default: `"lglg666/SongGeneration-base"`)
+- `MISTRAL_MODEL_NAME`: HuggingFace model name for lyrics (default: `"ministral/Ministral-3b-instruct"`)
+- `DEVICE`: Device to use - `'cpu'`, `'cuda'`, or `'mps'` (default: `'cpu'`)
 
 ### Backend
+
 - `BACKEND_PORT`: Port to run on (default: 8000)
-- `MODEL_SERVICE_URL`: URL of the model service (default: http://localhost:8001)
+- `MODEL_SERVICE_URL`: URL of the model service (default: `http://localhost:8001`)
 
 ### Frontend
-- `VITE_API_URL`: Backend API URL (default: http://localhost:8000)
 
-## ACE-Step Model Setup
-
-**Important**: The ACE-Step model implementation is currently a placeholder. To use the actual model:
-
-1. Install ACE-Step according to its official documentation
-2. Update `model-service/app/models/ace_step.py` with the actual model loading and generation code
-3. Add required dependencies to `model-service/requirements.txt`
-4. Configure model path via `ACE_STEP_MODEL_PATH` environment variable
-
-The current implementation provides the complete infrastructure - you just need to integrate the actual ACE-Step model API.
+- `VITE_API_URL`: Backend API URL (default: `http://localhost:8000`)
 
 ## Features
 
-- **Music Generation**: Generate music based on style, topic, refrain, or complete text
-- **Multiple Versions**: Generate 1-5 versions per request
+- **Music Generation**: Generate music based on style, topic, refrain, or complete text descriptions
+- **Lyrics Generation**: Automatic lyrics generation using open-source language models
+- **Multiple Versions**: Generate 1-5 versions per request for variety
 - **Real-time Status**: Poll job status and track generation progress
 - **Audio Playback**: Play generated versions directly in the browser
 - **Download**: Download generated audio files
+- **Provider Switching**: Switch between different music generation models
+- **Queue Management**: View and manage generation jobs
+
+## Model Details
+
+### Music Generation Models
+
+#### ACE-Step
+- **Type**: Text-to-music generation
+- **Status**: Infrastructure ready, model integration may be needed
+- **Configuration**: Set `ACE_STEP_MODEL_PATH` for model checkpoint
+
+#### SongGeneration (Tencent LeVo)
+- **Type**: Alternative music generation model
+- **Source**: https://github.com/tencent-ailab/SongGeneration
+- **Requirements**: 
+  - Cloned repository
+  - Runtime files from HuggingFace (`lglg666/SongGeneration-Runtime`)
+  - Model checkpoint (`lglg666/SongGeneration-base` or local path)
+- **Configuration**: Set `SONG_GENERATION_REPO_PATH` and optionally `SONG_GENERATION_MODEL_ID`
+
+### Lyrics Generation Model
+
+#### Mistral/Ministral-3b-instruct
+- **Type**: Large Language Model for text generation
+- **Default Model**: `ministral/Ministral-3b-instruct` (3B parameters)
+- **Alternative**: `ministral/Ministral-8B-Instruct-2410` (8B parameters)
+- **Execution**: Runs in subprocess per request for proper resource cleanup
+- **Quantization**: Supports 4-bit and 8-bit quantization (requires `bitsandbytes`)
 
 ## Development Notes
 
-- Job management is currently in-memory (jobs are lost on restart)
-- Audio files are stored locally in temporary directories
-- For production, consider:
-  - Database for job persistence (Redis, PostgreSQL)
-  - Cloud storage for audio files (S3, Azure Blob)
-  - Authentication and authorization
-  - Rate limiting
-  - Better error handling and retry logic
+### Current Implementation Status
+
+- ✅ **Infrastructure**: Complete microservices architecture
+- ✅ **Frontend**: Full-featured Vue.js application
+- ✅ **Backend**: Complete orchestration layer
+- ✅ **Lyrics Generation**: Fully functional with Mistral models
+- ✅ **Music Generation**: Infrastructure ready, model integration may vary by provider
+- ✅ **Job Management**: In-memory job queue (jobs lost on restart)
+- ✅ **Audio Storage**: Local temporary directories
+
+### Production Considerations
+
+For production deployment, consider:
+
+- **Database**: Replace in-memory job storage with persistent database (Redis, PostgreSQL)
+- **Cloud Storage**: Move audio files to cloud storage (S3, Azure Blob, etc.)
+- **Authentication**: Add user authentication and authorization
+- **Rate Limiting**: Implement rate limiting to prevent abuse
+- **Error Handling**: Enhanced error handling and retry logic
+- **Monitoring**: Add logging, metrics, and monitoring
+- **Scaling**: Consider horizontal scaling for model service
+- **Caching**: Implement caching for frequently requested generations
 
 ## Troubleshooting
 
-- **Model service not responding**: Check that the model service is running on port 8001
-- **CORS errors**: Ensure backend CORS settings include your frontend URL
-- **Audio files not found**: Verify that the model service is generating files correctly
+### Model Service Not Responding
+- Check that the model service is running on port 8001
+- Verify model availability via `/health` endpoint
+- Check logs for model initialization errors
 
+### CORS Errors
+- Ensure backend CORS settings include your frontend URL
+- Check `backend/app/main.py` for allowed origins
+
+### Audio Files Not Found
+- Verify that the model service is generating files correctly
+- Check model service logs for generation errors
+- Ensure output directories have write permissions
+
+### Model Not Available
+- For ACE-Step: Verify model checkpoint path is correct
+- For SongGeneration: Ensure repository is cloned and runtime files are downloaded
+- For Mistral: Check internet connection for HuggingFace downloads
+- Verify device availability (CUDA/MPS) if using GPU
+
+### Port Conflicts
+- Change ports in service configurations if default ports are in use
+- Update `VITE_API_URL` in frontend if backend port changes
+- Update `MODEL_SERVICE_URL` in backend if model service port changes
+
+## Contributing
+
+This project is open source and welcomes contributions! Whether it's:
+- Improving model integrations
+- Adding new features
+- Fixing bugs
+- Improving documentation
+- Enhancing the UI/UX
+
+All contributions that align with the open-source, hackable ethos are welcome.
+
+## License
+
+This project is open source. See individual component licenses for details.
+
+## Acknowledgments
+
+- **39C3** - Chaos Communication Congress
+- **c-base** - Hackerspace community
+- **Open Source AI Models** - Mistral, ACE-Step, Tencent SongGeneration communities
+- **Chaos Computer Family** - For the inspiration and community
+
+---
+
+**Built with ❤️ for the 39C3 power circus**

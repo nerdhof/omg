@@ -22,7 +22,7 @@ class LyricsService:
             "MODEL_SERVICE_URL",
             "http://localhost:8001"
         )
-        self.timeout = 120.0  # 2 minutes timeout for generation
+        self.timeout = 300.0  # 5 minutes timeout for generation
     
     async def generate_lyrics(
         self,

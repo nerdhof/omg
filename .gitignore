@@ -40,3 +40,7 @@ temp_audio/
 logs/
 
 SongGeneration/
+*.jpg
+*.ttf
+*.woff
+*.woff2

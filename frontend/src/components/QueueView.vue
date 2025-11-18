@@ -15,7 +15,7 @@
       <p>Loading queue...</p>
     </div>
 
-    <div v-else-if="queueItems.length === 0" style="text-align: center; padding: 40px; color: var(--color-secondary-tint-05);">
+    <div v-else-if="queueItems.length === 0" style="text-align: center; padding: 40px; color: var(--color-neutral);">
       <p>Queue is empty. Submit a generation request to add items to the queue.</p>
     </div>
 
@@ -105,19 +105,21 @@
           </div>
 
           <div v-if="item.status === 'completed' && item.versions && item.versions.length > 0" class="queue-item-versions">
-            <p style="margin-bottom: 10px; color: var(--color-secondary-tint-05);">
-              <strong>{{ item.versions.length }}</strong> version(s) generated
-            </p>
-            <div class="version-links">
-              <button
-                v-for="(version, idx) in item.versions"
-                :key="version.id"
-                @click="playVersion(version.id)"
-                class="btn-secondary"
-                style="font-size: 12px; padding: 6px 12px; margin-right: 8px;"
-              >
-                Play Version {{ idx + 1 }}
-              </button>
+            <div v-for="version in item.versions" :key="version.id" class="version-container">
+              <div class="version-controls">
+                <audio
+                  :src="getAudioUrl(version.id)"
+                  controls
+                  class="audio-player"
+                />
+                <button
+                  @click="downloadVersion(version.id)"
+                  class="btn-secondary"
+                  style="font-size: 12px; padding: 6px 12px; margin-left: 10px;"
+                >
+                  Download
+                </button>
+              </div>
             </div>
           </div>
 
@@ -234,9 +236,17 @@ export default {
         console.error('Preset error:', err)
       }
     },
-    playVersion(versionId) {
+    getAudioUrl(versionId) {
+      return musicAPI.getAudioUrl(versionId)
+    },
+    downloadVersion(versionId) {
       const url = musicAPI.getAudioUrl(versionId)
-      window.open(url, '_blank')
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `music-version-${versionId}.wav`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     }
   }
 }
@@ -253,29 +263,56 @@ export default {
   background: rgba(20, 20, 20, 0.8);
   border-radius: 8px;
   padding: 20px;
-  border: 2px solid var(--color-secondary-tint-03);
+  border: 2px solid #666;
   transition: all 0.3s;
 }
 
-.queue-item-processing {
+.queue-item:hover {
   border-color: var(--color-secondary);
-  background: rgba(150, 115, 255, 0.1);
-  box-shadow: 0 0 20px rgba(150, 115, 255, 0.3);
+  box-shadow: 0 0 20px rgba(150, 115, 255, 0.2), 0 0 40px rgba(150, 115, 255, 0.1);
+  background: rgba(150, 115, 255, 0.03);
+}
+
+.queue-item-processing {
+  border-color: var(--color-additional-02);
+  background: rgba(102, 242, 255, 0.1);
+  box-shadow: 0 0 20px rgba(102, 242, 255, 0.3);
+}
+
+.queue-item-processing:hover {
+  border-color: var(--color-additional-02);
+  background: rgba(102, 242, 255, 0.15);
+  box-shadow: 0 0 25px rgba(102, 242, 255, 0.4);
 }
 
 .queue-item-completed {
+  border-color: #666;
+  background: rgba(20, 20, 20, 0.8);
+}
+
+.queue-item-completed:hover {
   border-color: var(--color-primary);
   background: rgba(0, 255, 0, 0.05);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
 }
 
 .queue-item-failed {
+  border-color: #666;
+  background: rgba(20, 20, 20, 0.8);
+}
+
+.queue-item-failed:hover {
   border-color: var(--color-additional-01);
   background: rgba(255, 55, 25, 0.1);
   box-shadow: 0 0 15px rgba(255, 55, 25, 0.2);
 }
 
 .queue-item-cancelled {
+  border-color: #666;
+  background: rgba(20, 20, 20, 0.8);
+}
+
+.queue-item-cancelled:hover {
   border-color: var(--color-additional-02);
   background: rgba(102, 242, 255, 0.1);
   box-shadow: 0 0 15px rgba(102, 242, 255, 0.2);
@@ -297,8 +334,23 @@ export default {
 .position-number {
   font-size: 18px;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-neutral);
   min-width: 40px;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+.queue-item:hover .position-number {
+  color: var(--color-secondary);
+  text-shadow: 0 0 5px rgba(150, 115, 255, 0.5);
+}
+
+.queue-item-processing .position-number {
+  color: var(--color-additional-02);
+  text-shadow: 0 0 5px rgba(102, 242, 255, 0.5);
+}
+
+.queue-item-completed:hover .position-number {
+  color: var(--color-primary);
   text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
@@ -308,9 +360,9 @@ export default {
 }
 
 .btn-icon {
-  background: var(--color-secondary);
-  color: var(--color-neutral);
-  border: 1px solid var(--color-secondary);
+  background: #666;
+  color: #ccc;
+  border: 1px solid #666;
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -321,44 +373,45 @@ export default {
   justify-content: center;
   transition: all 0.2s;
   padding: 0;
-  box-shadow: 0 0 5px rgba(150, 115, 255, 0.3);
 }
 
 .btn-icon:hover:not(:disabled) {
-  background: var(--color-secondary-tint-02);
-  border-color: var(--color-secondary-tint-02);
+  background: var(--color-secondary);
+  color: var(--color-neutral);
+  border-color: var(--color-secondary);
   transform: scale(1.1);
   box-shadow: 0 0 10px rgba(150, 115, 255, 0.5);
 }
 
 .btn-icon:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
-  box-shadow: none;
+  background: #444;
+  border-color: #444;
+  color: #666;
 }
 
 .btn-danger {
-  background: var(--color-additional-01);
-  border-color: var(--color-additional-01);
-  box-shadow: 0 0 5px rgba(255, 55, 25, 0.3);
+  background: #666;
+  border-color: #666;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #ff5c3d;
-  border-color: #ff5c3d;
+  background: var(--color-additional-01);
+  border-color: var(--color-additional-01);
   box-shadow: 0 0 10px rgba(255, 55, 25, 0.5);
 }
 
 .btn-cancel {
-  background: var(--color-additional-02);
-  color: var(--color-dark);
-  border-color: var(--color-additional-02);
-  box-shadow: 0 0 5px rgba(102, 242, 255, 0.3);
+  background: #666;
+  color: #ccc;
+  border-color: #666;
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background: #7df5ff;
-  border-color: #7df5ff;
+  background: var(--color-additional-02);
+  color: var(--color-dark);
+  border-color: var(--color-additional-02);
   box-shadow: 0 0 10px rgba(102, 242, 255, 0.5);
 }
 
@@ -374,13 +427,23 @@ export default {
   margin-bottom: 8px;
   color: var(--color-neutral);
   line-height: 1.5;
+  transition: color 0.3s;
+}
+
+.queue-item:hover .queue-item-prompt {
+  color: var(--color-neutral);
 }
 
 .queue-item-details {
   display: flex;
   gap: 15px;
   font-size: 14px;
-  color: var(--color-secondary-tint-05);
+  color: var(--color-neutral);
+  transition: color 0.3s;
+}
+
+.queue-item:hover .queue-item-details {
+  color: var(--color-neutral);
 }
 
 .progress-section {
@@ -394,37 +457,98 @@ export default {
   flex: 1;
   height: 20px;
   background: var(--color-dark);
-  border: 1px solid var(--color-secondary-tint-03);
+  border: 1px solid #666;
   border-radius: 10px;
   overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.queue-item-processing .progress-bar {
+  border-color: var(--color-additional-02);
+}
+
+.queue-item:hover .progress-bar {
+  border-color: #888;
+}
+
+.queue-item-processing:hover .progress-bar {
+  border-color: var(--color-additional-02);
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  transition: width 0.3s ease;
+  background: #666;
+  transition: width 0.3s ease, background 0.3s, box-shadow 0.3s;
   border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.queue-item-processing .progress-fill {
+  background: linear-gradient(90deg, var(--color-additional-02) 0%, var(--color-additional-02) 100%);
+  box-shadow: 0 0 10px rgba(102, 242, 255, 0.5);
+}
+
+.queue-item:hover .progress-fill {
+  background: linear-gradient(90deg, var(--color-secondary) 0%, var(--color-primary) 100%);
+  box-shadow: 0 0 10px rgba(150, 115, 255, 0.5);
+}
+
+.queue-item-processing:hover .progress-fill {
+  background: linear-gradient(90deg, var(--color-additional-02) 0%, var(--color-additional-02) 100%);
+  box-shadow: 0 0 15px rgba(102, 242, 255, 0.7);
 }
 
 .progress-text {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-neutral);
   min-width: 50px;
-  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+.queue-item-processing .progress-text {
+  color: var(--color-additional-02);
+  text-shadow: 0 0 5px rgba(102, 242, 255, 0.5);
+}
+
+.queue-item:hover .progress-text {
+  color: var(--color-secondary);
+  text-shadow: 0 0 5px rgba(150, 115, 255, 0.5);
+}
+
+.queue-item-processing:hover .progress-text {
+  color: var(--color-additional-02);
+  text-shadow: 0 0 8px rgba(102, 242, 255, 0.7);
 }
 
 .queue-item-versions {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid var(--color-secondary-tint-03);
+  border-top: 1px solid #666;
+  transition: border-color 0.3s;
 }
 
-.version-links {
+.queue-item:hover .queue-item-versions {
+  border-top-color: #888;
+}
+
+.version-container {
+  margin-bottom: 10px;
+}
+
+.version-container:last-child {
+  margin-bottom: 0;
+}
+
+.version-controls {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.audio-player {
+  flex: 1;
+  max-width: 400px;
+  height: 32px;
 }
 </style>
 

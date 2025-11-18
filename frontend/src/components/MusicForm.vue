@@ -1,10 +1,5 @@
 <template>
   <div class="container">
-    <h1>Open Music Generator</h1>
-    <p style="color: var(--color-secondary-tint-05); margin-bottom: 30px;">
-      Create AI-generated music by specifying a prompt and optional lyrics
-    </p>
-
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
         <label for="prompt">Prompt *</label>

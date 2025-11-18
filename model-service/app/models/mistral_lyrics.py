@@ -82,7 +82,7 @@ class MistralLyricsModel:
                 # Use float32 for MPS as float16 can cause inf/nan issues in probability distributions
                 self.model = AutoModelForCausalLM.from_pretrained(
                     self.model_name,
-                    torch_dtype=torch.float32,
+                    torch_dtype=torch.float16,
                     device_map=None,
                     trust_remote_code=True,
                     low_cpu_mem_usage=True

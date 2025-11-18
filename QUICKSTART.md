@@ -4,7 +4,9 @@ Get the music generation web app up and running in minutes.
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- **Python**: 
+  - Backend: 3.13+
+  - Model Service: 3.11 only (>=3.11,<3.12)
 - Node.js 18 or higher
 - npm or yarn
 - uv (Python package manager) - Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -20,10 +22,10 @@ uv sync
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-**Note**: The ACE-Step model implementation is currently a placeholder. You'll need to:
-- Install ACE-Step according to its documentation
-- Update `app/models/ace_step.py` with actual model code
-- Add required dependencies to `pyproject.toml`
+**Note**: Model setup:
+- **ACE-Step**: Infrastructure is ready. Configure model checkpoint via `ACE_STEP_MODEL_PATH` environment variable if needed
+- **SongGeneration**: Requires cloned repository and runtime files (see main README for details)
+- **Mistral**: Automatically downloads from HuggingFace on first use
 
 ### 2. Set Up Backend
 
