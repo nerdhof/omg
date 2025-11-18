@@ -29,15 +29,27 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize model on startup."""
+    """Initialize models on startup."""
     try:
+        # Initialize ACE-Step model
         model = get_model()
         if model.is_available():
-            logger.info("Model service ready")
+            logger.info("ACE-Step model ready")
         else:
-            logger.warning("Model service started but model is not available")
+            logger.warning("ACE-Step model started but model is not available")
     except Exception as e:
-        logger.error(f"Failed to initialize model: {e}")
+        logger.error(f"Failed to initialize ACE-Step model: {e}")
+    
+    try:
+        # Initialize Mistral lyrics model (lazy loading, so just check availability)
+        from .core import get_mistral_model
+        mistral_model = get_mistral_model()
+        if mistral_model.is_available():
+            logger.info("Mistral lyrics model ready")
+        else:
+            logger.warning("Mistral lyrics model not available (will be loaded on first use)")
+    except Exception as e:
+        logger.warning(f"Mistral lyrics model initialization check failed: {e} (will be loaded on first use)")
 
 
 @app.get("/health")

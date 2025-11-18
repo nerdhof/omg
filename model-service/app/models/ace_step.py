@@ -4,13 +4,21 @@ import os
 import uuid
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Union
 import logging
 import torch
+import threading
+import multiprocessing
+from acestep.pipeline_ace_step import ACEStepPipeline
 
 from .base import BaseMusicModel
 
 logger = logging.getLogger(__name__)
+
+
+class CancelledError(Exception):
+    """Exception raised when generation is cancelled."""
+    pass
 
 
 class ACEStepModel(BaseMusicModel):
@@ -94,6 +102,8 @@ class ACEStepModel(BaseMusicModel):
         num_versions: int = 1,
         format: str = "mp3",
         manual_seeds: Optional[int] = None,
+        progress_callback: Optional[Callable[[float, str], None]] = None,
+        cancellation_event: Optional[Union[threading.Event, multiprocessing.Event]] = None,
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
@@ -106,10 +116,16 @@ class ACEStepModel(BaseMusicModel):
             num_versions: Number of versions to generate
             format: Output format ("wav" or "mp3")
             manual_seeds: Optional seed for reproducibility
+            progress_callback: Optional callback function(progress: float, step: str) for progress updates
+            cancellation_event: Optional threading.Event or multiprocessing.Event to check for cancellation
             **kwargs: Additional generation parameters
             
         Returns:
             List of generated audio files with metadata
+            
+        Raises:
+            RuntimeError: If generation fails
+            CancelledError: If generation is cancelled
         """
         if not self.is_available():
             raise RuntimeError("ACE-Step model is not available")
@@ -120,9 +136,18 @@ class ACEStepModel(BaseMusicModel):
         if lyrics is None:
             lyrics = ""
 
+        # Check for cancellation before starting
+        if cancellation_event and cancellation_event.is_set():
+            raise CancelledError("Generation was cancelled before starting")
+
         results = []
+        infer_step = kwargs.get("infer_step", 60)
         
         for i in range(num_versions):
+            # Check for cancellation before each version
+            if cancellation_event and cancellation_event.is_set():
+                raise CancelledError(f"Generation was cancelled during version {i+1}/{num_versions}")
+            
             version_id = str(uuid.uuid4())
             output_path = self.output_dir / f"{version_id}.{format}"
             
@@ -132,8 +157,32 @@ class ACEStepModel(BaseMusicModel):
                     f"and lyrics: {lyrics[:50] if lyrics else ''}..."
                 )
                 
+                # Calculate base progress for completed versions
+                base_progress = (i / num_versions) * 100
+                
+                # Update progress: starting version
+                if progress_callback:
+                    progress_callback(base_progress, f"Starting version {i+1}/{num_versions}")
+                
                 # Generate audio using ACEStepPipeline (matching Modal example parameters)
+                # Note: ACEStepPipeline doesn't expose progress, so we simulate it
+                # by updating progress periodically during generation
                 with torch.no_grad():
+                    # Simulate progress updates during generation
+                    # Since we can't get real progress from the pipeline,
+                    # we'll update progress based on estimated completion
+                    if progress_callback:
+                        # Start of generation: 10% of version progress
+                        version_progress = 10.0
+                        progress_callback(
+                            base_progress + (version_progress / num_versions),
+                            f"Generating version {i+1}/{num_versions}..."
+                        )
+                    
+                    # Check cancellation before model call
+                    if cancellation_event and cancellation_event.is_set():
+                        raise CancelledError(f"Generation was cancelled during version {i+1}/{num_versions}")
+                    
                     self.model(
                         audio_duration=duration,
                         prompt=prompt,
@@ -142,7 +191,7 @@ class ACEStepModel(BaseMusicModel):
                         save_path=str(output_path),
                         manual_seeds=manual_seeds,
                         # Parameters from Modal example
-                        infer_step=kwargs.get("infer_step", 45),
+                        infer_step=infer_step,
                         guidance_scale=kwargs.get("guidance_scale", 15),
                         scheduler_type=kwargs.get("scheduler_type", "euler"),
                         cfg_type=kwargs.get("cfg_type", "apg"),
@@ -154,6 +203,14 @@ class ACEStepModel(BaseMusicModel):
                         use_erg_lyric=kwargs.get("use_erg_lyric", True),
                         use_erg_diffusion=kwargs.get("use_erg_diffusion", True),
                     )
+                    
+                    # Update progress: version complete
+                    if progress_callback:
+                        version_progress = 100.0
+                        progress_callback(
+                            base_progress + (version_progress / num_versions),
+                            f"Completed version {i+1}/{num_versions}"
+                        )
                 
                 logger.info(f"Generated audio saved to: {output_path}")
                 
@@ -168,14 +225,21 @@ class ACEStepModel(BaseMusicModel):
                         "version": i + 1,
                         "format": format,
                         "seed": manual_seeds,
-                        "infer_step": kwargs.get("infer_step", 60),
+                        "infer_step": infer_step,
                         "guidance_scale": kwargs.get("guidance_scale", 15),
                     }
                 })
                 
+            except CancelledError:
+                # Re-raise cancellation errors
+                raise
             except Exception as e:
                 logger.error(f"Failed to generate version {i+1}: {e}", exc_info=True)
                 raise RuntimeError(f"Failed to generate version {i+1}: {e}")
+        
+        # Final progress update
+        if progress_callback:
+            progress_callback(100.0, "All versions completed")
         
         return results
     

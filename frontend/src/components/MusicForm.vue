@@ -2,56 +2,69 @@
   <div class="container">
     <h1>Generate Music</h1>
     <p style="color: #666; margin-bottom: 30px;">
-      Create AI-generated music by specifying style, topic, and other parameters
+      Create AI-generated music by specifying a prompt and optional lyrics
     </p>
 
     <form @submit.prevent="handleSubmit">
       <div class="form-group">
-        <label for="style">Music Style *</label>
-        <select id="style" v-model="form.style" required>
-          <option value="">Select a style</option>
-          <option value="jazz">Jazz</option>
-          <option value="rock">Rock</option>
-          <option value="classical">Classical</option>
-          <option value="electronic">Electronic</option>
-          <option value="pop">Pop</option>
-          <option value="blues">Blues</option>
-          <option value="country">Country</option>
-          <option value="hip-hop">Hip-Hop</option>
-          <option value="ambient">Ambient</option>
-          <option value="folk">Folk</option>
-        </select>
+        <label for="prompt">Prompt *</label>
+        <textarea
+          id="prompt"
+          v-model="form.prompt"
+          required
+          placeholder="Describe the music you want to generate, e.g., 'A relaxing jazz piece with smooth saxophone melodies' or 'Upbeat electronic dance music with a driving beat'"
+          rows="4"
+        />
+        <small style="color: #666; display: block; margin-top: 5px;">
+          Describe the style, mood, instruments, or any other characteristics of the music
+        </small>
       </div>
 
       <div class="form-group">
         <label for="topic">Topic (Optional)</label>
-        <input
-          id="topic"
-          type="text"
-          v-model="form.topic"
-          placeholder="e.g., nature, love, adventure"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="refrain">Refrain Line (Optional)</label>
-        <input
-          id="refrain"
-          type="text"
-          v-model="form.refrain"
-          placeholder="e.g., 'In the morning light'"
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="text">Complete Text/Lyrics (Optional)</label>
-        <textarea
-          id="text"
-          v-model="form.text"
-          placeholder="Enter complete lyrics or text for the music..."
-        />
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+          <input
+            id="topic"
+            type="text"
+            v-model="topic"
+            placeholder="Enter a topic for lyrics generation..."
+            style="flex: 1;"
+          />
+          <button
+            type="button"
+            @click="generateOrRefineLyrics"
+            :disabled="isGeneratingLyrics || !topic || !form.prompt"
+            style="white-space: nowrap;"
+          >
+            {{ isGeneratingLyrics ? 'Generating...' : (form.lyrics ? 'Refine Lyrics' : 'Write Lyrics') }}
+          </button>
+        </div>
         <small style="color: #666; display: block; margin-top: 5px;">
-          If provided, this will be used as the primary prompt
+          Enter a topic and click the button to generate or refine lyrics
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="lyrics">Lyrics (Optional)</label>
+        <div style="display: flex; gap: 10px; align-items: flex-start;">
+          <textarea
+            id="lyrics"
+            v-model="form.lyrics"
+            placeholder="Enter lyrics for the music (optional)..."
+            rows="6"
+            style="flex: 1;"
+          />
+          <button
+            type="button"
+            @click="undoLyrics"
+            :disabled="lyricsHistory.length === 0"
+            style="white-space: nowrap;"
+          >
+            Undo
+          </button>
+        </div>
+        <small style="color: #666; display: block; margin-top: 5px;">
+          If provided, the music will be generated to match these lyrics
         </small>
       </div>
 
@@ -85,6 +98,20 @@
         </select>
       </div>
 
+      <div class="form-group">
+        <label for="seed">Seed (Optional)</label>
+        <input
+          id="seed"
+          type="number"
+          v-model.number="form.seed"
+          placeholder="Leave empty for random seed"
+          min="0"
+        />
+        <small style="color: #666; display: block; margin-top: 5px;">
+          Specify a seed for reproducible generation. Leave empty to generate a random seed.
+        </small>
+      </div>
+
       <button type="submit" :disabled="isSubmitting">
         {{ isSubmitting ? 'Generating...' : 'Generate Music' }}
       </button>
@@ -93,31 +120,121 @@
 </template>
 
 <script>
+import { musicAPI } from '../services/api.js'
+
 export default {
   name: 'MusicForm',
   emits: ['submit'],
+  props: {
+    preset: {
+      type: Object,
+      default: null
+    }
+  },
   data() {
     return {
       form: {
-        style: '',
-        topic: '',
-        refrain: '',
-        text: '',
+        prompt: '',
+        lyrics: '',
         duration: 30,
-        num_versions: 3
+        num_versions: 1,
+        seed: ''
       },
-      isSubmitting: false
+      topic: '',
+      lyricsHistory: [],
+      isSubmitting: false,
+      isGeneratingLyrics: false
+    }
+  },
+  watch: {
+    preset(newPreset) {
+      if (newPreset) {
+        this.loadPreset(newPreset)
+      }
     }
   },
   methods: {
+    loadPreset(preset) {
+      // Load preset data into form
+      // The preset has: prompt, duration, num_versions, lyrics (optional), seed (optional)
+      this.form.prompt = preset.prompt || ''
+      this.form.lyrics = preset.lyrics || ''
+      this.form.duration = preset.duration || 30
+      this.form.num_versions = preset.num_versions || 1
+      this.form.seed = preset.seed || ''
+      // Reset topic and history when loading preset
+      this.topic = ''
+      this.lyricsHistory = []
+    },
+    async generateOrRefineLyrics() {
+      if (!this.topic || !this.topic.trim()) {
+        alert('Please enter a topic for the lyrics')
+        return
+      }
+
+      if (!this.form.prompt || !this.form.prompt.trim()) {
+        alert('Please provide a prompt describing the music')
+        return
+      }
+
+      this.isGeneratingLyrics = true
+      try {
+        // Save current lyrics to history before generating new ones
+        // History is a stack: oldest versions first, newest at the end
+        if (this.form.lyrics && this.form.lyrics.trim()) {
+          this.lyricsHistory.push(this.form.lyrics)
+        }
+
+        const response = await musicAPI.generateLyrics({
+          current_lyrics: this.form.lyrics && this.form.lyrics.trim() ? this.form.lyrics : null,
+          prompt: this.form.prompt,
+          duration: this.form.duration,
+          topic: this.topic
+        })
+
+        this.form.lyrics = response.lyrics
+      } catch (error) {
+        console.error('Failed to generate lyrics:', error)
+        const errorMessage = error.response?.data?.detail || error.message || 'Failed to generate lyrics'
+        alert(`Error: ${errorMessage}`)
+        // If we added current lyrics to history, remove it since generation failed
+        if (this.lyricsHistory.length > 0 && this.form.lyrics && this.form.lyrics.trim()) {
+          // Remove the last item if it matches current lyrics
+          const lastIndex = this.lyricsHistory.length - 1
+          if (this.lyricsHistory[lastIndex] === this.form.lyrics) {
+            this.lyricsHistory.pop()
+          }
+        }
+      } finally {
+        this.isGeneratingLyrics = false
+      }
+    },
+    undoLyrics() {
+      if (this.lyricsHistory.length === 0) {
+        return
+      }
+
+      // Get the previous version from history (most recent entry)
+      const previousLyrics = this.lyricsHistory.pop()
+      
+      // Save current lyrics to history (so we can undo multiple times and potentially redo)
+      const currentLyrics = this.form.lyrics || ''
+      if (currentLyrics.trim()) {
+        this.lyricsHistory.push(currentLyrics)
+      }
+
+      // Restore the previous version
+      this.form.lyrics = previousLyrics || ''
+    },
     async handleSubmit() {
-      if (!this.form.style) {
-        alert('Please select a music style')
+      if (!this.form.prompt || this.form.prompt.trim() === '') {
+        alert('Please provide a prompt describing the music you want to generate')
         return
       }
 
       this.isSubmitting = true
       try {
+        // Topic is not in form, so it's automatically excluded from submission
         await this.$emit('submit', { ...this.form })
       } finally {
         this.isSubmitting = false

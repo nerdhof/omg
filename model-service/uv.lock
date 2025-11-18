@@ -1059,6 +1059,7 @@ dependencies = [
     { name = "spacy" },
     { name = "torch" },
     { name = "torchaudio" },
+    { name = "transformers" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1076,6 +1077,7 @@ requires-dist = [
     { name = "spacy", git = "https://github.com/explosion/spaCy.git?rev=release-v3.8.4" },
     { name = "torch", specifier = "==2.8.0" },
     { name = "torchaudio", specifier = "==2.8.0" },
+    { name = "transformers", specifier = ">=4.35.0" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.24.0" },
 ]
 
