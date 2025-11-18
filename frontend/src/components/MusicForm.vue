@@ -1,7 +1,7 @@
 <template>
   <div class="container">
-    <h1>Generate Music</h1>
-    <p style="color: #666; margin-bottom: 30px;">
+    <h1>Open Music Generator</h1>
+    <p style="color: var(--color-secondary-tint-05); margin-bottom: 30px;">
       Create AI-generated music by specifying a prompt and optional lyrics
     </p>
 
@@ -15,7 +15,7 @@
           placeholder="Describe the music you want to generate, e.g., 'A relaxing jazz piece with smooth saxophone melodies' or 'Upbeat electronic dance music with a driving beat'"
           rows="4"
         />
-        <small style="color: #666; display: block; margin-top: 5px;">
+        <small style="color: var(--color-secondary-tint-05); display: block; margin-top: 5px;">
           Describe the style, mood, instruments, or any other characteristics of the music
         </small>
       </div>
@@ -39,7 +39,7 @@
             {{ isGeneratingLyrics ? 'Generating...' : (form.lyrics ? 'Refine Lyrics' : 'Write Lyrics') }}
           </button>
         </div>
-        <small style="color: #666; display: block; margin-top: 5px;">
+        <small style="color: var(--color-secondary-tint-05); display: block; margin-top: 5px;">
           Enter a topic and click the button to generate or refine lyrics
         </small>
       </div>
@@ -63,7 +63,7 @@
             Undo
           </button>
         </div>
-        <small style="color: #666; display: block; margin-top: 5px;">
+        <small style="color: var(--color-secondary-tint-05); display: block; margin-top: 5px;">
           If provided, the music will be generated to match these lyrics
         </small>
       </div>
@@ -81,7 +81,7 @@
           max="300"
           step="5"
         />
-        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--color-secondary-tint-05);">
           <span>10s</span>
           <span>300s</span>
         </div>
@@ -99,6 +99,18 @@
       </div>
 
       <div class="form-group">
+        <label for="provider">Model Provider</label>
+        <select id="provider" v-model="form.provider">
+          <option value="">Default (from server)</option>
+          <option value="ace-step">ACE-Step</option>
+          <option value="song-generation">SongGeneration</option>
+        </select>
+        <small style="color: var(--color-secondary-tint-05); display: block; margin-top: 5px;">
+          Choose which model to use for generation. Leave as "Default" to use the server's default provider.
+        </small>
+      </div>
+
+      <div class="form-group">
         <label for="seed">Seed (Optional)</label>
         <input
           id="seed"
@@ -107,7 +119,7 @@
           placeholder="Leave empty for random seed"
           min="0"
         />
-        <small style="color: #666; display: block; margin-top: 5px;">
+        <small style="color: var(--color-secondary-tint-05); display: block; margin-top: 5px;">
           Specify a seed for reproducible generation. Leave empty to generate a random seed.
         </small>
       </div>
@@ -138,7 +150,8 @@ export default {
         lyrics: '',
         duration: 30,
         num_versions: 1,
-        seed: ''
+        seed: '',
+        provider: ''
       },
       topic: '',
       lyricsHistory: [],
@@ -156,12 +169,13 @@ export default {
   methods: {
     loadPreset(preset) {
       // Load preset data into form
-      // The preset has: prompt, duration, num_versions, lyrics (optional), seed (optional)
+      // The preset has: prompt, duration, num_versions, lyrics (optional), seed (optional), provider (optional)
       this.form.prompt = preset.prompt || ''
       this.form.lyrics = preset.lyrics || ''
       this.form.duration = preset.duration || 30
       this.form.num_versions = preset.num_versions || 1
       this.form.seed = preset.seed || ''
+      this.form.provider = preset.provider || ''
       // Reset topic and history when loading preset
       this.topic = ''
       this.lyricsHistory = []

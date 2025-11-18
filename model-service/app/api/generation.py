@@ -5,10 +5,16 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import logging
 import multiprocessing
-import re
+import os
 
 from ..models.ace_step import ACEStepModel, CancelledError
-from ..core import get_model, get_mistral_model
+from ..models.song_generation import SongGenerationModel, CancelledError as SongGenerationCancelledError
+from ..core import (
+    get_model, 
+    switch_provider, 
+    get_current_provider, 
+    get_provider_status
+)
 from ..services.generation_job import job_manager, JobStatus
 
 logger = logging.getLogger(__name__)
@@ -25,6 +31,7 @@ class GenerationRequest(BaseModel):
     format: str = Field("wav", description="Output format ('wav' or 'mp3')")
     manual_seeds: Optional[int] = Field(None, description="Optional seed for reproducibility")
     job_id: Optional[str] = Field(None, description="Optional job ID (generated if not provided)")
+    provider: Optional[str] = Field(None, description="Optional provider override ('ace-step' or 'song-generation'). Uses default from MUSIC_PROVIDER env var if not specified.")
 
 
 class VersionResponse(BaseModel):
@@ -83,8 +90,11 @@ def _run_generation(
     This function runs in a separate process and cannot access the job object directly.
     It communicates via shared state and progress queue.
     """
+    # Get provider from shared state (set by the API endpoint)
+    provider = shared_state.get("provider", None)
+    
     # Initialize model in worker process (models can't be shared across processes)
-    model = get_model()
+    model = get_model(provider=provider)
     
     try:
         # Update status to processing
@@ -127,7 +137,7 @@ def _run_generation(
         
         logger.info(f"Job {job_id} completed successfully")
         
-    except CancelledError:
+    except (CancelledError, SongGenerationCancelledError):
         shared_state["status"] = JobStatus.CANCELLED.value
         current_progress = shared_state.get("progress", 0.0)
         shared_state["current_step"] = "Cancelled"
@@ -153,12 +163,24 @@ async def generate_music(request: GenerationRequest):
         Job ID and status
     """
     try:
-        model = get_model()
+        # Get provider (from request or use default)
+        provider = request.provider.lower() if request.provider else None
+        
+        # Validate provider if specified
+        if provider and provider not in ["ace-step", "song-generation"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid provider: {provider}. Supported providers: 'ace-step', 'song-generation'"
+            )
+        
+        # Get model for the specified provider
+        model = get_model(provider=provider)
         
         if not model.is_available():
+            provider_name = provider or "default"
             raise HTTPException(
                 status_code=503,
-                detail="Model is not available. Please check model service configuration."
+                detail=f"Model is not available for provider '{provider_name}'. Please check model service configuration."
             )
         
         # Create job
@@ -174,9 +196,12 @@ async def generate_music(request: GenerationRequest):
         
         job = job_manager.get_job(job_id)
         
+        # Store provider in shared state for the background process
+        job.shared_state["provider"] = provider
+        
         logger.info(
             f"Starting background generation job {job_id} with {request.num_versions} version(s) "
-            f"and prompt: {request.prompt[:50]}..."
+            f"using provider '{provider or 'default'}' and prompt: {request.prompt[:50]}..."
         )
         
         # Start generation in background process
@@ -206,6 +231,14 @@ async def generate_music(request: GenerationRequest):
             message="Generation started in background"
         )
     
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Invalid provider: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error(f"Failed to start generation: {e}", exc_info=True)
         raise HTTPException(
@@ -336,6 +369,174 @@ class LyricsGenerationResponse(BaseModel):
     lyrics: str = Field(..., description="Generated or refined lyrics")
 
 
+class ProviderSwitchRequest(BaseModel):
+    """Request model for switching providers."""
+    provider: str = Field(..., description="Provider name ('ace-step' or 'song-generation')")
+
+
+class ProviderResponse(BaseModel):
+    """Response model for provider information."""
+    current_provider: Optional[str]
+    available_providers: List[str]
+
+
+class ProviderStatusResponse(BaseModel):
+    """Response model for provider status."""
+    providers: Dict[str, Any]
+
+
+@router.get("/provider", response_model=ProviderResponse)
+async def get_provider():
+    """
+    Get current provider and list of available providers.
+    
+    Returns:
+        Current provider and available providers list
+    """
+    current = get_current_provider()
+    available = ["ace-step", "song-generation"]
+    
+    return ProviderResponse(
+        current_provider=current,
+        available_providers=available
+    )
+
+
+@router.post("/provider/switch", response_model=Dict[str, Any])
+async def switch_provider_endpoint(request: ProviderSwitchRequest):
+    """
+    Switch to a different music generation provider.
+    
+    This will clean up the current provider's resources and load the new provider.
+    
+    Args:
+        request: Provider switch request with provider name
+        
+    Returns:
+        Success message and new provider info
+    """
+    try:
+        provider = request.provider.lower()
+        
+        if provider not in ["ace-step", "song-generation"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid provider: {provider}. Supported providers: 'ace-step', 'song-generation'"
+            )
+        
+        # Switch provider (this will clean up the previous one)
+        model = switch_provider(provider)
+        
+        # Get model info
+        model_info = model.get_model_info()
+        
+        return {
+            "message": f"Switched to provider: {provider}",
+            "provider": provider,
+            "model_info": model_info
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Failed to switch provider: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to switch provider: {str(e)}"
+        )
+
+
+@router.get("/provider/status", response_model=ProviderStatusResponse)
+async def get_provider_status_endpoint():
+    """
+    Get status information for all providers.
+    
+    Returns:
+        Status information for each provider including availability and initialization state
+    """
+    try:
+        status = get_provider_status()
+        return ProviderStatusResponse(providers=status)
+    except Exception as e:
+        logger.error(f"Failed to get provider status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get provider status: {str(e)}"
+        )
+
+
+def _run_mistral_generation(
+    user_prompt: str,
+    system_prompt: Optional[str],
+    max_length: int,
+    temperature: float,
+    top_p: float,
+    do_sample: bool,
+    result_queue: multiprocessing.Queue,
+    error_queue: multiprocessing.Queue
+):
+    """
+    Run Mistral generation in a subprocess.
+    
+    This function runs in a separate process, loads the model, generates text,
+    and then exits, ensuring cleanup of model resources.
+    """
+    try:
+        # Import here to ensure it's in the subprocess context
+        from ..models.mistral_lyrics import MistralLyricsModel
+        
+        # Get configuration from environment
+        model_name = os.getenv("MISTRAL_MODEL_NAME", None)
+        device = os.getenv("DEVICE", "cpu")
+        
+        logger.info(f"Loading Mistral model in subprocess (device: {device})")
+        
+        # Create and initialize model in this subprocess
+        mistral_model = MistralLyricsModel(model_name=model_name, device=device)
+        
+        if not mistral_model.is_available():
+            error_queue.put("Mistral model is not available. Please check model service configuration.")
+            return
+        
+        logger.info("Generating lyrics with Mistral model...")
+        
+        # Generate lyrics
+        lyrics = mistral_model.generate(
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            max_length=max_length,
+            temperature=temperature,
+            top_p=top_p,
+            do_sample=do_sample
+        )
+        
+        # Clean up model resources explicitly
+        if hasattr(mistral_model, 'model') and mistral_model.model is not None:
+            del mistral_model.model
+        if hasattr(mistral_model, 'tokenizer') and mistral_model.tokenizer is not None:
+            del mistral_model.tokenizer
+        del mistral_model
+        
+        # Clear GPU cache if available
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
+        
+        # Put result in queue
+        result_queue.put(lyrics)
+        logger.info("Mistral generation completed, subprocess exiting")
+        
+    except Exception as e:
+        logger.error(f"Mistral generation failed in subprocess: {e}", exc_info=True)
+        error_queue.put(str(e))
+
+
 @router.post("/lyrics/generate", response_model=LyricsGenerationResponse)
 async def generate_lyrics(request: LyricsGenerationRequest):
     """
@@ -343,16 +544,10 @@ async def generate_lyrics(request: LyricsGenerationRequest):
     
     Accepts song context (prompt, duration, topic) and optionally existing lyrics
     for refinement. Returns generated or refined lyrics.
+    
+    The Mistral model runs in a separate subprocess that is cleaned up after each request.
     """
     try:
-        mistral_model = get_mistral_model()
-        
-        if not mistral_model.is_available():
-            raise HTTPException(
-                status_code=503,
-                detail="Mistral model is not available. Please check model service configuration."
-            )
-        
         # Build system and user prompts for lyrics generation
         if request.current_lyrics:
             # Refinement mode
@@ -393,15 +588,45 @@ REQUIREMENTS:
         
         logger.info(f"Generating lyrics with topic: {request.topic[:50]}...")
         
-        # Generate lyrics with separated system and user prompts
-        lyrics = mistral_model.generate(
-            user_prompt=user_prompt,
-            system_prompt=system_prompt,
-            max_length=1024,
-            temperature=0.9,
-            top_p=0.9,
-            do_sample=True
+        # Create queues for communication with subprocess
+        result_queue = multiprocessing.Queue()
+        error_queue = multiprocessing.Queue()
+        
+        # Start Mistral generation in subprocess
+        process = multiprocessing.Process(
+            target=_run_mistral_generation,
+            args=(
+                user_prompt,
+                system_prompt,
+                1024,  # max_length
+                0.9,   # temperature
+                0.9,   # top_p
+                True,  # do_sample
+                result_queue,
+                error_queue
+            ),
+            daemon=False  # Don't use daemon to allow proper cleanup
         )
+        
+        process.start()
+        process.join()  # Wait for the process to complete
+        
+        # Check for errors
+        if not error_queue.empty():
+            error_msg = error_queue.get()
+            raise HTTPException(
+                status_code=503 if "not available" in error_msg else 500,
+                detail=error_msg
+            )
+        
+        # Get result
+        if result_queue.empty():
+            raise HTTPException(
+                status_code=500,
+                detail="Mistral generation completed but no result was returned"
+            )
+        
+        lyrics = result_queue.get()
         
         if not lyrics:
             raise HTTPException(

@@ -29,7 +29,8 @@ class JobManager:
         duration: float,
         num_versions: int,
         lyrics: Optional[str] = None,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        provider: Optional[str] = None
     ) -> str:
         """
         Create a new generation job and add it to the queue.
@@ -47,6 +48,7 @@ class JobManager:
             "duration": duration,
             "num_versions": num_versions,
             "seed": seed,
+            "provider": provider,
             "versions": None,
             "error": None,
             "created_at": datetime.now(),
@@ -119,6 +121,7 @@ class JobManager:
                 lyrics=job.get("lyrics"),
                 num_versions=job["num_versions"],
                 seed=job.get("seed"),
+                provider=job.get("provider"),
                 job_id=job_id  # Use backend job_id as model-service job_id
             )
             

@@ -20,6 +20,7 @@ class GenerationRequest(BaseModel):
     lyrics: Optional[str] = Field(None, description="Optional lyrics for the music")
     num_versions: int = Field(1, ge=1, le=5, description="Number of versions to generate")
     seed: Optional[int] = Field(None, description="Optional seed for reproducible generation")
+    provider: Optional[str] = Field(None, description="Optional provider override ('ace-step' or 'song-generation')")
 
 
 class VersionInfo(BaseModel):
@@ -56,6 +57,7 @@ class QueueItemResponse(BaseModel):
     num_versions: int
     lyrics: Optional[str] = None
     seed: Optional[int] = None
+    provider: Optional[str] = None
     versions: Optional[List[VersionInfo]] = None
     error: Optional[str] = None
     created_at: str
@@ -80,6 +82,7 @@ class PresetInfo(BaseModel):
     num_versions: int
     lyrics: Optional[str] = None
     seed: Optional[int] = None
+    provider: Optional[str] = None
 
 
 class LyricsGenerationRequest(BaseModel):

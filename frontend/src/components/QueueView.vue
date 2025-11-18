@@ -15,7 +15,7 @@
       <p>Loading queue...</p>
     </div>
 
-    <div v-else-if="queueItems.length === 0" style="text-align: center; padding: 40px; color: #666;">
+    <div v-else-if="queueItems.length === 0" style="text-align: center; padding: 40px; color: var(--color-secondary-tint-05);">
       <p>Queue is empty. Submit a generation request to add items to the queue.</p>
     </div>
 
@@ -91,6 +91,7 @@
             </div>
             <div class="queue-item-details">
               <span>Duration: {{ item.duration }}s</span>
+              <span v-if="item.provider">Provider: {{ item.provider }}</span>
               <span v-if="item.seed !== null && item.seed !== undefined">Seed: {{ item.seed }}</span>
               <span v-if="item.lyrics">Has lyrics</span>
             </div>
@@ -104,7 +105,7 @@
           </div>
 
           <div v-if="item.status === 'completed' && item.versions && item.versions.length > 0" class="queue-item-versions">
-            <p style="margin-bottom: 10px; color: #666;">
+            <p style="margin-bottom: 10px; color: var(--color-secondary-tint-05);">
               <strong>{{ item.versions.length }}</strong> version(s) generated
             </p>
             <div class="version-links">
@@ -249,32 +250,35 @@ export default {
 }
 
 .queue-item {
-  background: #f8f9fa;
+  background: rgba(20, 20, 20, 0.8);
   border-radius: 8px;
   padding: 20px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--color-secondary-tint-03);
   transition: all 0.3s;
 }
 
 .queue-item-processing {
-  border-color: #667eea;
-  background: #f0f4ff;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+  border-color: var(--color-secondary);
+  background: rgba(150, 115, 255, 0.1);
+  box-shadow: 0 0 20px rgba(150, 115, 255, 0.3);
 }
 
 .queue-item-completed {
-  border-color: #d1e7dd;
-  background: #f0f9f4;
+  border-color: var(--color-primary);
+  background: rgba(0, 255, 0, 0.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
 }
 
 .queue-item-failed {
-  border-color: #f8d7da;
-  background: #fef0f0;
+  border-color: var(--color-additional-01);
+  background: rgba(255, 55, 25, 0.1);
+  box-shadow: 0 0 15px rgba(255, 55, 25, 0.2);
 }
 
 .queue-item-cancelled {
-  border-color: #ffc107;
-  background: #fffbf0;
+  border-color: var(--color-additional-02);
+  background: rgba(102, 242, 255, 0.1);
+  box-shadow: 0 0 15px rgba(102, 242, 255, 0.2);
 }
 
 .queue-item-header {
@@ -293,8 +297,9 @@ export default {
 .position-number {
   font-size: 18px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--color-primary);
   min-width: 40px;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
 .queue-item-actions {
@@ -303,9 +308,9 @@ export default {
 }
 
 .btn-icon {
-  background: #6c757d;
-  color: white;
-  border: none;
+  background: var(--color-secondary);
+  color: var(--color-neutral);
+  border: 1px solid var(--color-secondary);
   width: 32px;
   height: 32px;
   border-radius: 6px;
@@ -316,33 +321,45 @@ export default {
   justify-content: center;
   transition: all 0.2s;
   padding: 0;
+  box-shadow: 0 0 5px rgba(150, 115, 255, 0.3);
 }
 
 .btn-icon:hover:not(:disabled) {
-  background: #5a6268;
+  background: var(--color-secondary-tint-02);
+  border-color: var(--color-secondary-tint-02);
   transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(150, 115, 255, 0.5);
 }
 
 .btn-icon:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-danger {
-  background: #dc3545;
+  background: var(--color-additional-01);
+  border-color: var(--color-additional-01);
+  box-shadow: 0 0 5px rgba(255, 55, 25, 0.3);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #c82333;
+  background: #ff5c3d;
+  border-color: #ff5c3d;
+  box-shadow: 0 0 10px rgba(255, 55, 25, 0.5);
 }
 
 .btn-cancel {
-  background: #ffc107;
-  color: #000;
+  background: var(--color-additional-02);
+  color: var(--color-dark);
+  border-color: var(--color-additional-02);
+  box-shadow: 0 0 5px rgba(102, 242, 255, 0.3);
 }
 
 .btn-cancel:hover:not(:disabled) {
-  background: #e0a800;
+  background: #7df5ff;
+  border-color: #7df5ff;
+  box-shadow: 0 0 10px rgba(102, 242, 255, 0.5);
 }
 
 .queue-item-content {
@@ -355,7 +372,7 @@ export default {
 
 .queue-item-prompt {
   margin-bottom: 8px;
-  color: #333;
+  color: var(--color-neutral);
   line-height: 1.5;
 }
 
@@ -363,7 +380,7 @@ export default {
   display: flex;
   gap: 15px;
   font-size: 14px;
-  color: #666;
+  color: var(--color-secondary-tint-05);
 }
 
 .progress-section {
@@ -376,29 +393,32 @@ export default {
 .progress-bar {
   flex: 1;
   height: 20px;
-  background: #e0e0e0;
+  background: var(--color-dark);
+  border: 1px solid var(--color-secondary-tint-03);
   border-radius: 10px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   transition: width 0.3s ease;
   border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .progress-text {
   font-size: 14px;
   font-weight: 600;
-  color: #667eea;
+  color: var(--color-primary);
   min-width: 50px;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
 .queue-item-versions {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--color-secondary-tint-03);
 }
 
 .version-links {

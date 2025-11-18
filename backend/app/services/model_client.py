@@ -32,6 +32,7 @@ class ModelServiceClient:
         num_versions: int = 1,
         lyrics: Optional[str] = None,
         seed: Optional[int] = None,
+        provider: Optional[str] = None,
         job_id: Optional[str] = None
     ) -> str:
         """
@@ -62,6 +63,9 @@ class ModelServiceClient:
         
         if seed is not None:
             payload["manual_seeds"] = seed
+        
+        if provider is not None:
+            payload["provider"] = provider
         
         if job_id is not None:
             payload["job_id"] = job_id
@@ -183,6 +187,7 @@ class ModelServiceClient:
         num_versions: int = 1,
         lyrics: Optional[str] = None,
         seed: Optional[int] = None,
+        provider: Optional[str] = None,
         job_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -207,6 +212,7 @@ class ModelServiceClient:
             num_versions=num_versions,
             lyrics=lyrics,
             seed=seed,
+            provider=provider,
             job_id=job_id
         )
         

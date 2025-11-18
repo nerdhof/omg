@@ -38,7 +38,8 @@ async def submit_generation(request: GenerationRequest):
             duration=request.duration,
             lyrics=request.lyrics,
             num_versions=request.num_versions,
-            seed=request.seed
+            seed=request.seed,
+            provider=request.provider
         )
         
         job = job_manager.get_job(job_id)
@@ -105,6 +106,7 @@ async def get_queue():
             num_versions=job["num_versions"],
             lyrics=job.get("lyrics"),
             seed=job.get("seed"),
+            provider=job.get("provider"),
             versions=job.get("versions"),
             error=job.get("error"),
             created_at=job["created_at"].isoformat() if isinstance(job["created_at"], datetime) else str(job["created_at"])
@@ -146,6 +148,7 @@ async def get_queue_item(job_id: str):
         num_versions=job["num_versions"],
         lyrics=job.get("lyrics"),
         seed=job.get("seed"),
+        provider=job.get("provider"),
         versions=job.get("versions"),
         error=job.get("error"),
         created_at=job["created_at"].isoformat() if isinstance(job["created_at"], datetime) else str(job["created_at"])
@@ -202,7 +205,8 @@ async def get_queue_item_preset(job_id: str):
         duration=job["duration"],
         num_versions=job["num_versions"],
         lyrics=job.get("lyrics"),
-        seed=job.get("seed")
+        seed=job.get("seed"),
+        provider=job.get("provider")
     )
 
 

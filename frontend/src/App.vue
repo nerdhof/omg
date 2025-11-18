@@ -45,7 +45,8 @@ export default {
             duration: formData.duration,
             num_versions: 1, // Each queue item generates only 1 version
             lyrics: formData.lyrics && formData.lyrics.trim() !== '' ? formData.lyrics.trim() : null,
-            seed: seed
+            seed: seed,
+            provider: formData.provider && formData.provider.trim() !== '' ? formData.provider.trim() : null
           }
           
           await musicAPI.generateMusic(requestData)

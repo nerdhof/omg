@@ -17,13 +17,13 @@
       <div v-if="progress !== null" class="progress-bar">
         <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
       </div>
-      <p style="margin-top: 10px; color: #666;">
+      <p style="margin-top: 10px; color: var(--color-secondary-tint-05);">
         {{ jobStatus === 'pending' ? 'Job queued...' : 'Generating music...' }}
       </p>
     </div>
 
     <div v-else-if="jobStatus === 'completed' && versions.length > 0">
-      <p style="margin-bottom: 20px; color: #666;">
+      <p style="margin-bottom: 20px; color: var(--color-secondary-tint-05);">
         Select a version to play and download
       </p>
       <div class="versions-grid">
@@ -74,7 +74,7 @@
     </div>
 
     <div v-else-if="versions.length === 0 && jobStatus === 'completed'">
-      <p style="color: #666;">No versions generated.</p>
+      <p style="color: var(--color-secondary-tint-05);">No versions generated.</p>
     </div>
   </div>
 </template>

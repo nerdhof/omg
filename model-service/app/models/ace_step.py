@@ -289,3 +289,18 @@ class ACEStepModel(BaseMusicModel):
                 pass
         
         return info
+    
+    def cleanup(self):
+        """Clean up model resources."""
+        if self.model is not None:
+            logger.info("Cleaning up ACE-Step model resources")
+            del self.model
+            self.model = None
+            
+            # Clear GPU cache if CUDA is available
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("Cleared CUDA cache")
+            
+            self._initialized = False
+            logger.info("ACE-Step model resources cleaned up")

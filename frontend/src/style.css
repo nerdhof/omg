@@ -1,3 +1,56 @@
+/* 39C3 Style Guide - Color Variables */
+:root {
+  --color-dark: #141414;
+  --color-neutral: #faf5f5;
+  --color-primary: #00ff00;
+  --color-secondary: #9673ff;
+  --color-additional-01: #ff3719;
+  --color-additional-02: #66f2ff;
+
+  --color-primary-tint-01: #009900;
+  --color-primary-tint-02: #00be00;
+  --color-primary-tint-03: #00d300;
+  --color-primary-tint-04: #00ea00;
+  --color-primary-tint-05: #a3ff90;
+  --color-primary-tint-06: #ccffbe;
+  --color-primary-tint-07: #ebffe5;
+
+  --color-secondary-tint-01: #4d2eed;
+  --color-secondary-tint-02: #5c33f4;
+  --color-secondary-tint-03: #7952fe;
+  --color-secondary-tint-04: #b69dfe;
+  --color-secondary-tint-05: #d4c4fe;
+  --color-secondary-tint-06: #efe7ff;
+}
+
+/* Note: KarioDuplexVar and OfficerSans fonts would need to be downloaded from the style guide package */
+/* Using system fonts as fallback */
+@font-face {
+  font-family: 'KarioDuplexVar';
+  src: local('Arial'), local('Helvetica');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OfficerSansCond';
+  src: local('Arial Narrow'), local('Helvetica Narrow');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OfficerSans';
+  src: local('Arial'), local('Helvetica');
+  font-display: swap;
+}
+
+@keyframes font_weight_wave {
+  from {
+    font-weight: 10;
+  } to {
+    font-weight: 100;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,8 +58,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: 'OfficerSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--color-dark);
+  color: var(--color-neutral);
   min-height: 100vh;
   padding: 20px;
 }
@@ -17,22 +71,27 @@ body {
 }
 
 .container {
-  background: white;
-  border-radius: 12px;
+  background: rgba(20, 20, 20, 0.95);
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
   padding: 30px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2), 0 0 40px rgba(0, 255, 0, 0.1);
   margin-bottom: 20px;
 }
 
 h1 {
-  color: #333;
+  font-family: 'KarioDuplexVar', 'OfficerSansCond', sans-serif;
+  color: var(--color-primary);
   margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 h2 {
-  color: #555;
+  font-family: 'KarioDuplexVar', 'OfficerSansCond', sans-serif;
+  color: var(--color-secondary);
   margin-bottom: 20px;
   font-size: 1.5em;
+  text-shadow: 0 0 10px rgba(150, 115, 255, 0.5);
 }
 
 .form-group {
@@ -42,7 +101,7 @@ h2 {
 label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--color-neutral);
   font-weight: 500;
 }
 
@@ -52,10 +111,12 @@ select,
 textarea {
   width: 100%;
   padding: 12px;
-  border: 2px solid #e0e0e0;
+  background: var(--color-dark);
+  border: 2px solid var(--color-secondary-tint-03);
   border-radius: 6px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  color: var(--color-neutral);
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 input[type="text"]:focus,
@@ -63,7 +124,13 @@ input[type="number"]:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+select option {
+  background: var(--color-dark);
+  color: var(--color-neutral);
 }
 
 textarea {
@@ -79,54 +146,62 @@ input[type="range"] {
 .range-value {
   display: inline-block;
   margin-left: 10px;
-  color: #667eea;
+  color: var(--color-primary);
   font-weight: 600;
+  text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
 button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+  background: var(--color-primary);
+  color: var(--color-dark);
+  border: 2px solid var(--color-primary);
   padding: 12px 30px;
   border-radius: 6px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
 }
 
 button:hover:not(:disabled) {
+  background: var(--color-primary-tint-02);
+  border-color: var(--color-primary-tint-02);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .loading {
   text-align: center;
   padding: 40px;
-  color: #667eea;
+  color: var(--color-primary);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 
 .error {
-  background: #fee;
-  color: #c33;
+  background: rgba(255, 55, 25, 0.1);
+  color: var(--color-additional-01);
   padding: 15px;
   border-radius: 6px;
   margin-bottom: 20px;
-  border-left: 4px solid #c33;
+  border-left: 4px solid var(--color-additional-01);
+  box-shadow: 0 0 10px rgba(255, 55, 25, 0.2);
 }
 
 .success {
-  background: #efe;
-  color: #3c3;
+  background: rgba(0, 255, 0, 0.1);
+  color: var(--color-primary);
   padding: 15px;
   border-radius: 6px;
   margin-bottom: 20px;
-  border-left: 4px solid #3c3;
+  border-left: 4px solid var(--color-primary);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
 .versions-grid {
@@ -137,20 +212,22 @@ button:disabled {
 }
 
 .version-card {
-  background: #f8f9fa;
+  background: rgba(20, 20, 20, 0.8);
   border-radius: 8px;
   padding: 20px;
-  border: 2px solid #e0e0e0;
-  transition: border-color 0.3s;
+  border: 2px solid var(--color-secondary-tint-03);
+  transition: all 0.3s;
 }
 
 .version-card:hover {
-  border-color: #667eea;
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 15px rgba(150, 115, 255, 0.3);
 }
 
 .version-card.selected {
-  border-color: #667eea;
-  background: #f0f4ff;
+  border-color: var(--color-primary);
+  background: rgba(0, 255, 0, 0.05);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
 }
 
 .version-header {
@@ -162,7 +239,7 @@ button:disabled {
 
 .version-title {
   font-weight: 600;
-  color: #333;
+  color: var(--color-neutral);
 }
 
 .audio-player {
@@ -177,13 +254,18 @@ button:disabled {
 }
 
 .btn-secondary {
-  background: #6c757d;
+  background: var(--color-secondary);
+  color: var(--color-neutral);
+  border: 2px solid var(--color-secondary);
   padding: 8px 16px;
   font-size: 14px;
+  box-shadow: 0 0 10px rgba(150, 115, 255, 0.3);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #5a6268;
+  background: var(--color-secondary-tint-02);
+  border-color: var(--color-secondary-tint-02);
+  box-shadow: 0 0 15px rgba(150, 115, 255, 0.5);
 }
 
 .status-badge {
@@ -196,29 +278,38 @@ button:disabled {
 }
 
 .status-pending {
-  background: #fff3cd;
-  color: #856404;
+  background: rgba(102, 242, 255, 0.2);
+  color: var(--color-additional-02);
+  border: 1px solid var(--color-additional-02);
+  box-shadow: 0 0 5px rgba(102, 242, 255, 0.3);
 }
 
 .status-processing {
-  background: #cfe2ff;
-  color: #084298;
+  background: rgba(150, 115, 255, 0.2);
+  color: var(--color-secondary);
+  border: 1px solid var(--color-secondary);
+  box-shadow: 0 0 5px rgba(150, 115, 255, 0.3);
 }
 
 .status-completed {
-  background: #d1e7dd;
-  color: #0f5132;
+  background: rgba(0, 255, 0, 0.2);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
 }
 
 .status-failed {
-  background: #f8d7da;
-  color: #842029;
+  background: rgba(255, 55, 25, 0.2);
+  color: var(--color-additional-01);
+  border: 1px solid var(--color-additional-01);
+  box-shadow: 0 0 5px rgba(255, 55, 25, 0.3);
 }
 
 .progress-bar {
   width: 100%;
   height: 8px;
-  background: #e0e0e0;
+  background: var(--color-dark);
+  border: 1px solid var(--color-secondary-tint-03);
   border-radius: 4px;
   overflow: hidden;
   margin: 10px 0;
@@ -226,7 +317,8 @@ button:disabled {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   transition: width 0.3s;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
 }
 

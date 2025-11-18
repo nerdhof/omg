@@ -31,33 +31,31 @@ app.add_middleware(
 async def startup_event():
     """Initialize models on startup."""
     try:
-        # Initialize ACE-Step model
+        # Initialize music generation model based on MUSIC_PROVIDER env var
+        import os
+        default_provider = os.getenv("MUSIC_PROVIDER", "ace-step").lower()
         model = get_model()
         if model.is_available():
-            logger.info("ACE-Step model ready")
+            logger.info(f"{default_provider} model ready")
         else:
-            logger.warning("ACE-Step model started but model is not available")
+            logger.warning(f"{default_provider} model started but model is not available")
     except Exception as e:
-        logger.error(f"Failed to initialize ACE-Step model: {e}")
+        logger.error(f"Failed to initialize music generation model: {e}")
     
-    try:
-        # Initialize Mistral lyrics model (lazy loading, so just check availability)
-        from .core import get_mistral_model
-        mistral_model = get_mistral_model()
-        if mistral_model.is_available():
-            logger.info("Mistral lyrics model ready")
-        else:
-            logger.warning("Mistral lyrics model not available (will be loaded on first use)")
-    except Exception as e:
-        logger.warning(f"Mistral lyrics model initialization check failed: {e} (will be loaded on first use)")
+    # Note: Mistral model is no longer initialized on startup.
+    # It runs in a subprocess per request to ensure proper cleanup.
+    logger.info("Mistral lyrics model will be loaded in subprocess per request")
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    from .core import get_current_provider
     model = get_model()
+    current_provider = get_current_provider()
     return {
         "status": "healthy" if model.is_available() else "degraded",
+        "current_provider": current_provider,
         "model_info": model.get_model_info()
     }
 
