@@ -144,9 +144,11 @@ body {
 }
 
 h1 {
-  font-family: 'KarioDuplexVar', 'OfficerSansCond', sans-serif;
+  font-family: 'KarioDuplexVar';
   color: var(--color-secondary);
   margin-bottom: 10px;
+  font-weight: 10;
+  font-kerning: none;
   transition: text-shadow 0.3s;
   text-shadow: 0 0 10px rgba(150, 115, 255, 0.5);
   text-align: center;
@@ -158,10 +160,13 @@ h1:hover {
 
 h2 {
   font-family: 'KarioDuplexVar', 'OfficerSansCond', sans-serif;
+  font-weight: 10;
+  font-kerning: none;
   color: var(--color-neutral);
   margin-bottom: 20px;
   font-size: 1.5em;
   transition: color 0.3s, text-shadow 0.3s;
+  text-align: center;
 }
 
 h2:hover {

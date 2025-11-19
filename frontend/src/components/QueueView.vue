@@ -1,7 +1,10 @@
 <template>
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h2>Generation Queue</h2>
+      <h2 style="margin-bottom: 0;">
+        <span style="font-weight: 100">Generation</span>
+        <span style="font-weight: 10"> Queue</span>
+      </h2>
       <button @click="refreshQueue" :disabled="loading" class="btn-secondary" style="font-size: 14px;">
         {{ loading ? 'Refreshing...' : 'Refresh' }}
       </button>

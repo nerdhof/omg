@@ -1,7 +1,7 @@
 <template>
   <div class="page-links">
     <div class="container">
-      <h1>OMG - 39C3 power circus - oPEN mUSIC gENERATOR</h1>
+      <WaveText text="OMG - 39C3 power circus - oPEN mUSIC gENERATOR" tag="h1" />
       <p style="color: var(--color-neutral); margin-bottom: 30px;">
         An open and free music generation app for the 39C3 power circus.
         Generates lyrics and music for your show - all with free and open source mdoels.
@@ -27,7 +27,10 @@
             '--flicker-rgba-90': card.flickerRgba90
           }"
         >
-          <h2>{{ card.title }}</h2>
+          <h2>
+            <span style="font-weight: 100">{{ card.title.split(' ')[0] }}</span>
+            <span style="font-weight: 10">{{ card.title.split(' ').slice(1).join(' ') ? ' ' + card.title.split(' ').slice(1).join(' ') : '' }}</span>
+          </h2>
           <p>{{ card.description }}</p>
           <a :href="card.url" target="_blank" rel="noopener noreferrer" class="link-button">
             {{ card.buttonText }} →
@@ -40,33 +43,41 @@
 
 <script>
 import Navigation from '../components/Navigation.vue'
+import WaveText from '../components/WaveText.vue'
 
 export default {
   name: 'Links',
   components: {
-    Navigation
+    Navigation,
+    WaveText
   },
   data() {
     return {
+      colors: [
+        { hex: '#66f2ff', rgb: [102, 242, 255] },  // cyan
+        { hex: '#9673ff', rgb: [150, 115, 255] }, // purple
+        { hex: '#00ff00', rgb: [0, 255, 0] },     // green
+        { hex: '#ff3719', rgb: [255, 55, 25] }    // red
+      ],
       cards: [
         {
-          title: 'OMG Project',
-          description: 'Open Music Generator - An open and free music generation application for the 39C3 power circus',
-          url: 'https://github.com/nerdhof/omg',
-          buttonText: 'View on GitHub',
-          flickerColor: '#00ff00',
-          flickerRgba40: 'rgba(0, 255, 0, 0.4)',
-          flickerRgba20: 'rgba(0, 255, 0, 0.2)',
-          flickerRgba80: 'rgba(0, 255, 0, 0.8)',
-          flickerRgba60: 'rgba(0, 255, 0, 0.6)',
-          flickerRgba50: 'rgba(0, 255, 0, 0.5)',
-          flickerRgba30: 'rgba(0, 255, 0, 0.3)',
-          flickerRgba70: 'rgba(0, 255, 0, 0.7)',
-          flickerRgba90: 'rgba(0, 255, 0, 0.9)',
+          title: 'c-base',
+          description: 'A hackerspace and community in Berlin, Germany',
+          url: 'https://www.c-base.org/',
+          buttonText: 'Visit c-base',
+          flickerColor: '#66f2ff',
+          flickerRgba40: 'rgba(102, 242, 255, 0.4)',
+          flickerRgba20: 'rgba(102, 242, 255, 0.2)',
+          flickerRgba80: 'rgba(102, 242, 255, 0.8)',
+          flickerRgba60: 'rgba(102, 242, 255, 0.6)',
+          flickerRgba50: 'rgba(102, 242, 255, 0.5)',
+          flickerRgba30: 'rgba(102, 242, 255, 0.3)',
+          flickerRgba70: 'rgba(102, 242, 255, 0.7)',
+          flickerRgba90: 'rgba(102, 242, 255, 0.9)',
           isFlickering: false
         },
         {
-          title: '39C3',
+          title: '<<39C3',
           description: '39th Chaos Communication Congress - The world\'s largest hacker convention',
           url: 'https://events.ccc.de/category/39c3/',
           buttonText: 'Visit 39C3',
@@ -98,19 +109,35 @@ export default {
           isFlickering: false
         },
         {
-          title: 'c-base',
-          description: 'A hackerspace and community in Berlin, Germany',
-          url: 'https://www.c-base.org/',
-          buttonText: 'Visit c-base',
-          flickerColor: '#66f2ff',
-          flickerRgba40: 'rgba(102, 242, 255, 0.4)',
-          flickerRgba20: 'rgba(102, 242, 255, 0.2)',
-          flickerRgba80: 'rgba(102, 242, 255, 0.8)',
-          flickerRgba60: 'rgba(102, 242, 255, 0.6)',
-          flickerRgba50: 'rgba(102, 242, 255, 0.5)',
-          flickerRgba30: 'rgba(102, 242, 255, 0.3)',
-          flickerRgba70: 'rgba(102, 242, 255, 0.7)',
-          flickerRgba90: 'rgba(102, 242, 255, 0.9)',
+          title: 'Sven Tastic',
+          description: 'The amazing performer behind the 39C3 power circus show.',
+          url: 'https://www.instagram.com/sventastictube/',
+          buttonText: 'Follow on Instagram',
+          flickerColor: '#9673ff',
+          flickerRgba40: 'rgba(150, 115, 255, 0.4)',
+          flickerRgba20: 'rgba(150, 115, 255, 0.2)',
+          flickerRgba80: 'rgba(150, 115, 255, 0.8)',
+          flickerRgba60: 'rgba(150, 115, 255, 0.6)',
+          flickerRgba50: 'rgba(150, 115, 255, 0.5)',
+          flickerRgba30: 'rgba(150, 115, 255, 0.3)',
+          flickerRgba70: 'rgba(150, 115, 255, 0.7)',
+          flickerRgba90: 'rgba(150, 115, 255, 0.9)',
+          isFlickering: false
+        },
+        {
+          title: 'OMG Project',
+          description: 'Open Music Generator - An open and free music generation application for the 39C3 power circus',
+          url: 'https://github.com/nerdhof/omg',
+          buttonText: 'View on GitHub',
+          flickerColor: '#00ff00',
+          flickerRgba40: 'rgba(0, 255, 0, 0.4)',
+          flickerRgba20: 'rgba(0, 255, 0, 0.2)',
+          flickerRgba80: 'rgba(0, 255, 0, 0.8)',
+          flickerRgba60: 'rgba(0, 255, 0, 0.6)',
+          flickerRgba50: 'rgba(0, 255, 0, 0.5)',
+          flickerRgba30: 'rgba(0, 255, 0, 0.3)',
+          flickerRgba70: 'rgba(0, 255, 0, 0.7)',
+          flickerRgba90: 'rgba(0, 255, 0, 0.9)',
           isFlickering: false
         },
         {
@@ -190,6 +217,22 @@ export default {
     }
   },
   methods: {
+    assignRandomColor(card) {
+      // Pick a random color from the 4 available colors
+      const randomColor = this.colors[Math.floor(Math.random() * this.colors.length)]
+      const [r, g, b] = randomColor.rgb
+      
+      // Assign the color and all rgba variations
+      card.flickerColor = randomColor.hex
+      card.flickerRgba40 = `rgba(${r}, ${g}, ${b}, 0.4)`
+      card.flickerRgba20 = `rgba(${r}, ${g}, ${b}, 0.2)`
+      card.flickerRgba80 = `rgba(${r}, ${g}, ${b}, 0.8)`
+      card.flickerRgba60 = `rgba(${r}, ${g}, ${b}, 0.6)`
+      card.flickerRgba50 = `rgba(${r}, ${g}, ${b}, 0.5)`
+      card.flickerRgba30 = `rgba(${r}, ${g}, ${b}, 0.3)`
+      card.flickerRgba70 = `rgba(${r}, ${g}, ${b}, 0.7)`
+      card.flickerRgba90 = `rgba(${r}, ${g}, ${b}, 0.9)`
+    },
     startRandomFlickering() {
       // Randomly turn cards on/off at different intervals
       this.cards.forEach((card, index) => {
@@ -206,6 +249,9 @@ export default {
       if (!card) return
       
       if (turnOn) {
+        // Assign a random color when turning on
+        this.assignRandomColor(card)
+        
         // Turn the card on (flickering state)
         card.isFlickering = true
         

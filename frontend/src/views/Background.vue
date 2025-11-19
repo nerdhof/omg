@@ -1,7 +1,7 @@
 <template>
   <div class="page-background">
     <div class="container">
-      <h1>OMG - 39C3 power circus - oPEN mUSIC gENERATOR</h1>
+      <WaveText text="OMG - 39C3 power circus - oPEN mUSIC gENERATOR" tag="h1" />
       <p style="color: var(--color-neutral); margin-bottom: 30px;">
         An open and free music generation app for the 39C3 power circus.
         Generates lyrics and music for your show - all with free and open source models.
@@ -24,10 +24,10 @@
             :title="currentSlide < slides.length - 1 ? 'Click to go to next slide' : 'Click to go back to first slide'"
           >
             <div v-if="slide.image" class="slide-image">
-              <img :src="slide.image" :alt="slide.title" />
+              <img :src="slide.image" :alt="stripHtml(slide.title)" />
             </div>
             <div class="slide-text">
-              <h2 v-if="slide.title">{{ slide.title }}</h2>
+              <h2 v-if="slide.title" v-html="slide.title"></h2>
               <div v-html="slide.content"></div>
             </div>
           </div>
@@ -66,60 +66,50 @@
 
 <script>
 import Navigation from '../components/Navigation.vue'
+import WaveText from '../components/WaveText.vue'
 
 export default {
   name: 'Background',
   components: {
-    Navigation
+    Navigation,
+    WaveText
   },
   data() {
     return {
       currentSlide: 0,
       slides: [
         {
-          title: '39C3 - Chaos Communication Congress',
+          title: '<span style="font-weight: 100">&lt;&lt;39C3</span><span style="font-weight: 10"> - Chaos Communication Congress</span>',
           content: `
-            <p>39C3 is this year's edition of the world's largest hacker convention, the <strong>Chaos Communication Congress</strong>.</p>
-            <p>More than a congress, this is <strong>5 days of a community-driven, utopian cyberpunk world for the whole family</strong>.</p>
-            <p>A gathering where hackers, makers, artists, and curious minds come together to share knowledge, build projects, and create something extraordinary.</p>
+            <p>39C3 is this year's edition of the world's largest hacker convention, the <strong>Chaos Communication Congress</strong>. More than a congress, this is <strong>5 days of a community-driven, utopian cyberpunk world for the whole family</strong>. A gathering where hackers, makers, artists, and curious minds come together to share knowledge, build projects, and create something extraordinary.</p>
           `,
           image: '/images/ccc-building-night.jpg'
         },
         {
-          title: 'The Community',
+          title: '<span style="font-weight: 10">The</span><span style="font-weight: 100"> Community</span>',
           content: `
-            <p>I'm a long-time member of the <strong>c-base hackerspace</strong> and part of the <strong>Chaos Computer Family</strong> for years.</p>
-            <p>In fact, I even met my wife there – the community has been central to my life.</p>
-            <p>This is where ideas become reality, where collaboration happens, and where lifelong connections are made.</p>
+            <p>I'm a long-time member of the <strong>c-base hackerspace</strong> and part of the <strong>Chaos Computer Family</strong> for years. In fact, I even met my wife there – the community has been central to my life. This is where ideas become reality, where collaboration happens, and where lifelong connections are made.</p>
           `,
           image: '/images/hackathon-indoor.jpg'
         },
         {
-          title: 'Combining Circus with Chaos',
+          title: '<span style="font-weight: 10">Combining</span><span style="font-weight: 100"> Circus</span><span style="font-weight: 10"> with </span><span style="font-weight: 100"> Chaos</span>',
           content: `
-            <p>As I started juggling, some of the guys training with me are joining in this year.</p>
-            <p>We want to <strong>combine circus with chaos</strong> – bringing together the art of performance with the spirit of hacking.</p>
-            <p>This means open-sourcing everything: <strong>lighted prop building</strong> including 3D prints, chip designs, and embedded software.</p>
-            <p>We're planning a circus show at the congress and spreading the fun of juggling throughout the event.</p>
+            <p>As I started juggling, some of the guys training with me are joining in this year. We want to <strong>combine circus with chaos</strong> – bringing together the art of performance with the spirit of hacking. This means open-sourcing everything: <strong>lighted prop building</strong> including 3D prints, chip designs, and embedded software. We're planning a circus show at the congress and spreading the fun of juggling throughout the event.</p>
           `,
           image: '/images/light-play-night.jpg'
         },
         {
-          title: 'The Missing Piece',
+          title: '<span style="font-weight: 100">The</span><span style="font-weight: 10"> Missing Piece</span>',
           content: `
-            <p>But we're still <strong>lacking music for the show</strong>.</p>
-            <p>Creating original music that fits the energy and spirit of our performance is essential, but traditional music production can be expensive and restrictive.</p>
-            <p>We need something that matches our ethos: <strong>open, free, and hackable</strong>.</p>
+            <p>But we're still <strong>lacking music for the show</strong>. Creating original music that fits the energy and spirit of our performance is essential, but traditional music production can be expensive and restrictive. We need something that matches our ethos: <strong>open, free, and hackable</strong>.</p>
           `,
           image: '/images/cch-building-night.jpg'
         },
         {
-          title: 'Enter Open Source AI',
+          title: '<span style="font-weight: 10">Enter</span><span style="font-weight: 100"> Open </span><span style="font-weight: 10"> Source AI</span>',
           content: `
-            <p>That's where <strong>AI comes into play</strong>.</p>
-            <p>However, we want to keep all components <strong>free and hackable</strong>, so we're focused exclusively on <strong>Open Source Networks</strong>.</p>
-            <p>No proprietary models, no locked APIs, no restrictions – just pure, open-source technology that anyone can use, modify, and improve.</p>
-            <p>This project embodies the hacker spirit: building something useful, sharing it freely, and making it better together.</p>
+            <p>That's where <strong>AI comes into play</strong>. However, we want to keep all components <strong>free and hackable</strong>, so we're focused exclusively on <strong>Open Source Networks</strong>. No proprietary models, no locked APIs, no restrictions – just pure, open-source technology that anyone can use, modify, and improve. This project embodies the hacker spirit: building something useful, sharing it freely, and making it better together.</p>
           `,
           image: '/images/hackathon-wide.jpg'
         }
@@ -135,6 +125,11 @@ export default {
     window.removeEventListener('keydown', this.handleKeyPress)
   },
   methods: {
+    stripHtml(html) {
+      const div = document.createElement('div')
+      div.innerHTML = html
+      return div.textContent || div.innerText || ''
+    },
     nextSlide() {
       if (this.currentSlide < this.slides.length - 1) {
         this.currentSlide++
@@ -298,9 +293,25 @@ export default {
 }
 
 .slide-text p {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   line-height: 1.8;
   font-size: 1.1em;
+  padding: 15px 20px;
+  background: rgba(102, 242, 255, 0.05);
+  border-left: 4px solid rgba(102, 242, 255, 0.4);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.slide-text p:hover {
+  background: rgba(102, 242, 255, 0.08);
+  border-left-color: var(--color-additional-02);
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(102, 242, 255, 0.1);
+}
+
+.slide-text p:last-child {
+  margin-bottom: 0;
 }
 
 .slide-text strong {

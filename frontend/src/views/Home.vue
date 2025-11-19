@@ -1,7 +1,7 @@
 <template>
   <div class="page-home">
     <div class="container">
-      <h1>OMG - 39C3 power circus - oPEN mUSIC gENERATOR</h1>
+      <WaveText text="OMG - 39C3 power circus - oPEN mUSIC gENERATOR" tag="h1" />
       <p style="color: var(--color-neutral); margin-bottom: 30px;">
         An open and free music generation app for the 39C3 power circus.
         Generates lyrics and music for your show - all with free and open source mdoels.
@@ -17,6 +17,7 @@
 import MusicForm from '../components/MusicForm.vue'
 import QueueView from '../components/QueueView.vue'
 import Navigation from '../components/Navigation.vue'
+import WaveText from '../components/WaveText.vue'
 import { musicAPI } from '../services/api'
 
 export default {
@@ -24,7 +25,8 @@ export default {
   components: {
     MusicForm,
     QueueView,
-    Navigation
+    Navigation,
+    WaveText
   },
   data() {
     return {

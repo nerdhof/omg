@@ -23,7 +23,7 @@ export default {
 
 .nav-container {
   max-width: 1200px;
-  margin: 0 auto;
+  margin: 1 auto;
   padding: 0 2rem;
   display: flex;
   gap: 0;
@@ -36,7 +36,7 @@ export default {
   text-decoration: none;
   font-family: 'OfficerSans', sans-serif;
   font-size: 1rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.5rem;
   border-radius: 4px;
   transition: all 0.2s ease;
 }

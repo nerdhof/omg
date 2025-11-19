@@ -1,7 +1,7 @@
 <template>
   <div class="page-architecture">
     <div class="container">
-      <h1>OMG - 39C3 power circus - oPEN mUSIC gENERATOR</h1>
+      <WaveText text="OMG - 39C3 power circus - oPEN mUSIC gENERATOR" tag="h1" />
       <p style="color: var(--color-neutral); margin-bottom: 30px;">
         An open and free music generation app for the 39C3 power circus.
         Generates lyrics and music for your show - all with free and open source mdoels.
@@ -9,8 +9,11 @@
       <Navigation />
     </div>
     <div class="container">
-      <h2>System Architecture</h2>
-      <p style="color: var(--color-neutral); margin-bottom: 30px; text-align: center;">
+      <h2>
+        <span style="font-weight: 10">System</span>
+        <span style="font-weight: 100"> Architecture</span>
+      </h2>
+      <p style="color: var(--color-neutral); margin-bottom: 30px;">
         Three-tier microservices architecture with detailed backend and AI model service components.
         The diagram shows the data flow from user interface through orchestration to AI model processing.
       </p>
@@ -22,12 +25,14 @@
 <script>
 import Navigation from '../components/Navigation.vue'
 import ArchitectureDiagram from '../components/ArchitectureDiagram.vue'
+import WaveText from '../components/WaveText.vue'
 
 export default {
   name: 'Architecture',
   components: {
     Navigation,
-    ArchitectureDiagram
+    ArchitectureDiagram,
+    WaveText
   }
 }
 </script>

@@ -1,6 +1,9 @@
 <template>
   <div class="container">
-    <h2>Generated Versions</h2>
+    <h2>
+      <span style="font-weight: 10">Generated</span>
+      <span style="font-weight: 100"> Versions</span>
+    </h2>
 
     <div v-if="loading" class="loading">
       <p>Loading versions...</p>
