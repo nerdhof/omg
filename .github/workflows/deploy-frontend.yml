@@ -28,6 +28,66 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download and extract 39C3 fonts
+        working-directory: frontend/src/fonts
+        run: |
+          # Download the 39C3 design package v2
+          curl -L -o design-package.zip https://events.ccc.de/congress/2025/infos/styleguide/39c3-styleguide-full-v2.zip
+          
+          # Extract Kario fonts
+          unzip -j design-package.zip \
+            "39C3-Design-Package/39C3-Fonts/Kario 39C3 Variable/Web/Kario39C3VarWEB-Roman.woff" \
+            "39C3-Design-Package/39C3-Fonts/Kario 39C3 Variable/Web/Kario39C3VarWEB-Roman.woff2" \
+            "39C3-Design-Package/39C3-Fonts/Kario 39C3 Variable/Desktop/Kario39C3Var-Roman.ttf" \
+            -d .
+          
+          # Extract Officer Sans Web fonts
+          unzip -j design-package.zip \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-Regular.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-Regular.woff2" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-Bold.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-Bold.woff2" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-BoldItalic.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-BoldItalic.woff2" \
+            -d .
+          
+          # Extract Officer Sans Web fonts (RegularItalic -> Italic)
+          unzip -j design-package.zip \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-RegularItalic.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansWeb-RegularItalic.woff2" \
+            -d .
+          
+          # Rename RegularItalic to Italic to match expected names
+          mv OfficerSansWeb-RegularItalic.woff OfficerSansWeb-Italic.woff
+          mv OfficerSansWeb-RegularItalic.woff2 OfficerSansWeb-Italic.woff2
+          
+          # Extract Officer Sans Cond Web fonts
+          unzip -j design-package.zip \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-Regular.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-Regular.woff2" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-Bold.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-Bold.woff2" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-BoldItalic.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-BoldItalic.woff2" \
+            -d .
+          
+          # Extract Officer Sans Cond Web fonts (RegularItalic -> Italic)
+          unzip -j design-package.zip \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-RegularItalic.woff" \
+            "39C3-Design-Package/39C3-Fonts/Officer/Officer Sans Web/OfficerSansCondWeb-RegularItalic.woff2" \
+            -d .
+          
+          # Rename RegularItalic to Italic to match expected names
+          mv OfficerSansCondWeb-RegularItalic.woff OfficerSansCondWeb-Italic.woff
+          mv OfficerSansCondWeb-RegularItalic.woff2 OfficerSansCondWeb-Italic.woff2
+          
+          # Clean up
+          rm -f design-package.zip
+          
+          # List downloaded fonts for verification
+          echo "Downloaded fonts:"
+          ls -la *.woff* *.ttf
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
