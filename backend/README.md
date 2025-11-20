@@ -30,6 +30,32 @@ docker run -p 8000:8000 backend
 - `BACKEND_PORT`: Port to run on (default: 8000)
 - `MODEL_SERVICE_URL`: URL of the model service (default: http://localhost:8001)
 
+## CORS Configuration
+
+The backend has CORS middleware configured to accept requests from allowed origins. By default, it allows:
+- `http://localhost:5173` (Vite dev server)
+- `http://localhost:3000`
+- `http://127.0.0.1:5173`
+- `http://127.0.0.1:3000`
+
+### Adding GitHub Pages Origin
+
+If you're hosting the frontend on GitHub Pages, add your GitHub Pages URL to the allowed origins in `app/main.py`:
+
+```python
+allow_origins=[
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "https://USERNAME.github.io",  # Add your GitHub Pages URL
+],
+```
+
+Replace `USERNAME` with your actual GitHub username.
+
+**Security Note:** For production deployments, replace `allow_origins=["*"]` with specific allowed origins to prevent unauthorized access.
+
 ## API Endpoints
 
 - `GET /`: Root endpoint

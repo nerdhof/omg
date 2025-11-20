@@ -116,6 +116,35 @@ class GenerationJob:
                 return True
         return False
     
+    def cleanup(self):
+        """Clean up multiprocessing resources to prevent file descriptor leaks."""
+        try:
+            # Close the progress queue
+            if hasattr(self, 'progress_queue'):
+                try:
+                    self.progress_queue.close()
+                    self.progress_queue.join_thread()
+                except Exception as e:
+                    logger.warning(f"Error closing progress queue for job {self.job_id}: {e}")
+            
+            # Shutdown the manager to close pipes
+            if hasattr(self, 'manager'):
+                try:
+                    self.manager.shutdown()
+                except Exception as e:
+                    logger.warning(f"Error shutting down manager for job {self.job_id}: {e}")
+            
+            # Ensure process is terminated
+            if self.process and self.process.is_alive():
+                self.process.terminate()
+                self.process.join(timeout=2.0)
+                if self.process.is_alive():
+                    self.process.kill()
+            
+            logger.debug(f"Cleaned up resources for job {self.job_id}")
+        except Exception as e:
+            logger.error(f"Error during cleanup of job {self.job_id}: {e}")
+    
     def is_cancelled(self) -> bool:
         """Check if the job has been cancelled."""
         return self.cancellation_event.is_set()
@@ -219,6 +248,13 @@ class GenerationJobManager:
         Returns:
             Job ID
         """
+        # Periodically clean up old jobs to prevent resource leaks
+        # Clean up jobs older than 1 hour
+        try:
+            self.cleanup_old_jobs(max_age_seconds=3600)
+        except Exception as e:
+            logger.warning(f"Error during automatic cleanup: {e}")
+        
         if job_id is None:
             job_id = str(uuid.uuid4())
         
@@ -271,10 +307,49 @@ class GenerationJobManager:
         """
         with self.lock:
             if job_id in self.jobs:
+                job = self.jobs[job_id]
+                # Clean up resources before deleting
+                job.cleanup()
                 del self.jobs[job_id]
                 logger.info(f"Deleted job {job_id}")
                 return True
         return False
+    
+    def cleanup_old_jobs(self, max_age_seconds: int = 3600):
+        """
+        Clean up completed jobs older than max_age_seconds.
+        
+        Args:
+            max_age_seconds: Maximum age in seconds for completed jobs (default: 1 hour)
+            
+        Returns:
+            Number of jobs cleaned up
+        """
+        cleaned_count = 0
+        now = datetime.now()
+        
+        with self.lock:
+            jobs_to_delete = []
+            for job_id, job in list(self.jobs.items()):
+                # Only clean up completed, failed, or cancelled jobs
+                if job.status in (JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED):
+                    if job.completed_at:
+                        age_seconds = (now - job.completed_at).total_seconds()
+                        if age_seconds > max_age_seconds:
+                            jobs_to_delete.append(job_id)
+            
+            # Delete outside the iteration
+            for job_id in jobs_to_delete:
+                job = self.jobs[job_id]
+                job.cleanup()
+                del self.jobs[job_id]
+                cleaned_count += 1
+                logger.info(f"Cleaned up old job {job_id}")
+        
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} old job(s)")
+        
+        return cleaned_count
 
 
 # Global job manager instance

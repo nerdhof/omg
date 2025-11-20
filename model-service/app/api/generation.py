@@ -313,6 +313,46 @@ async def cancel_generation(job_id: str):
         )
 
 
+@router.delete("/generate/{job_id}")
+async def delete_job(job_id: str):
+    """
+    Delete a generation job from memory.
+    
+    This will clean up all resources associated with the job.
+    Only completed, failed, or cancelled jobs should be deleted.
+    
+    Args:
+        job_id: Job ID to delete
+        
+    Returns:
+        Success message
+    """
+    job = job_manager.get_job(job_id)
+    
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} not found"
+        )
+    
+    # Optionally enforce that only completed/failed/cancelled jobs can be deleted
+    if job.status in (JobStatus.PENDING, JobStatus.PROCESSING):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete job {job_id} while it is {job.status.value}. Cancel it first."
+        )
+    
+    success = job_manager.delete_job(job_id)
+    
+    if success:
+        return {"message": f"Job {job_id} deleted", "job_id": job_id}
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete job {job_id}"
+        )
+
+
 @router.get("/generate/{job_id}/status", response_model=JobStatusResponse)
 async def get_generation_status(job_id: str):
     """
@@ -354,6 +394,32 @@ async def get_generation_status(job_id: str):
         versions=versions,
         error=job.error
     )
+
+
+@router.post("/jobs/cleanup")
+async def cleanup_old_jobs(max_age_seconds: int = 3600):
+    """
+    Clean up completed jobs older than max_age_seconds.
+    
+    Args:
+        max_age_seconds: Maximum age in seconds for completed jobs (default: 3600 = 1 hour)
+        
+    Returns:
+        Number of jobs cleaned up
+    """
+    try:
+        cleaned_count = job_manager.cleanup_old_jobs(max_age_seconds=max_age_seconds)
+        return {
+            "message": f"Cleaned up {cleaned_count} old job(s)",
+            "cleaned_count": cleaned_count,
+            "max_age_seconds": max_age_seconds
+        }
+    except Exception as e:
+        logger.error(f"Failed to clean up old jobs: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clean up old jobs: {str(e)}"
+        )
 
 
 class LyricsGenerationRequest(BaseModel):
@@ -611,30 +677,44 @@ REQUIREMENTS:
         process.start()
         process.join()  # Wait for the process to complete
         
-        # Check for errors
-        if not error_queue.empty():
-            error_msg = error_queue.get()
-            raise HTTPException(
-                status_code=503 if "not available" in error_msg else 500,
-                detail=error_msg
-            )
-        
-        # Get result
-        if result_queue.empty():
-            raise HTTPException(
-                status_code=500,
-                detail="Mistral generation completed but no result was returned"
-            )
-        
-        lyrics = result_queue.get()
-        
-        if not lyrics:
-            raise HTTPException(
-                status_code=500,
-                detail="Generated lyrics are empty"
-            )
-        
-        return LyricsGenerationResponse(lyrics=lyrics)
+        try:
+            # Check for errors
+            if not error_queue.empty():
+                error_msg = error_queue.get()
+                raise HTTPException(
+                    status_code=503 if "not available" in error_msg else 500,
+                    detail=error_msg
+                )
+            
+            # Get result
+            if result_queue.empty():
+                raise HTTPException(
+                    status_code=500,
+                    detail="Mistral generation completed but no result was returned"
+                )
+            
+            lyrics = result_queue.get()
+            
+            if not lyrics:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Generated lyrics are empty"
+                )
+            
+            return LyricsGenerationResponse(lyrics=lyrics)
+        finally:
+            # Clean up queues to prevent resource leaks
+            try:
+                result_queue.close()
+                result_queue.join_thread()
+            except Exception as e:
+                logger.warning(f"Error closing result_queue: {e}")
+            
+            try:
+                error_queue.close()
+                error_queue.join_thread()
+            except Exception as e:
+                logger.warning(f"Error closing error_queue: {e}")
     
     except HTTPException:
         raise
