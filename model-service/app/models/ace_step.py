@@ -9,7 +9,6 @@ import logging
 import torch
 import threading
 import multiprocessing
-from acestep.pipeline_ace_step import ACEStepPipeline
 
 from .base import BaseMusicModel
 
@@ -164,26 +163,98 @@ class ACEStepModel(BaseMusicModel):
                 if progress_callback:
                     progress_callback(base_progress, f"Starting version {i+1}/{num_versions}")
                 
-                # Generate audio using ACEStepPipeline (matching Modal example parameters)
-                # Note: ACEStepPipeline doesn't expose progress, so we simulate it
-                # by updating progress periodically during generation
+                # Generate audio using ACEStepPipeline with progress tracking
+                # We monkeypatch tqdm to intercept progress from the diffusion loops
                 with torch.no_grad():
-                    # Simulate progress updates during generation
-                    # Since we can't get real progress from the pipeline,
-                    # we'll update progress based on estimated completion
-                    if progress_callback:
-                        # Start of generation: 10% of version progress
-                        version_progress = 10.0
-                        progress_callback(
-                            base_progress + (version_progress / num_versions),
-                            f"Generating version {i+1}/{num_versions}..."
-                        )
-                    
                     # Check cancellation before model call
                     if cancellation_event and cancellation_event.is_set():
                         raise CancelledError(f"Generation was cancelled during version {i+1}/{num_versions}")
                     
-                    self.model(
+                    # Setup progress tracking by monkeypatching tqdm
+                    import acestep.pipeline_ace_step as ace_pipeline_module
+                    original_tqdm = ace_pipeline_module.tqdm
+                    
+                    # Track which phase we're in (diffusion vs decoding)
+                    progress_state = {
+                        'phase': 'diffusion',  # 'diffusion' or 'decoding'
+                        'diffusion_steps': 0,
+                        'diffusion_total': 0,
+                    }
+                    
+                    class ProgressTqdm:
+                        """Wrapper for tqdm that intercepts progress and calls our callback."""
+                        
+                        def __init__(self, iterable=None, total=None, desc=None, **kwargs):
+                            self.iterable = iterable
+                            self.total = total
+                            self.desc = desc or ""
+                            self.n = 0
+                            
+                            # Detect phase based on description or total
+                            # Diffusion loops have larger totals (infer_steps), decoding is smaller (batch_size)
+                            if self.total and self.total > 10:
+                                progress_state['phase'] = 'diffusion'
+                                progress_state['diffusion_total'] = self.total
+                            else:
+                                progress_state['phase'] = 'decoding'
+                        
+                        def __iter__(self):
+                            """Iterate and update progress on each step."""
+                            if self.iterable is None:
+                                return iter([])
+                            
+                            for idx, item in enumerate(self.iterable):
+                                self.n = idx + 1
+                                
+                                if progress_callback:
+                                    if progress_state['phase'] == 'diffusion':
+                                        # Diffusion takes 90% of version progress
+                                        step_progress = (self.n / self.total * 90.0) if self.total else 0
+                                        overall_progress = base_progress + (step_progress / num_versions)
+                                        progress_callback(
+                                            overall_progress,
+                                            f"Version {i+1}/{num_versions}: Diffusion step {self.n}/{self.total}"
+                                        )
+                                        progress_state['diffusion_steps'] = self.n
+                                    elif progress_state['phase'] == 'decoding':
+                                        # Decoding takes the remaining 10% of version progress
+                                        decode_progress = 90.0 + (self.n / self.total * 10.0) if self.total else 90.0
+                                        overall_progress = base_progress + (decode_progress / num_versions)
+                                        progress_callback(
+                                            overall_progress,
+                                            f"Version {i+1}/{num_versions}: Decoding {self.n}/{self.total}"
+                                        )
+                                
+                                # Check for cancellation
+                                if cancellation_event and cancellation_event.is_set():
+                                    raise CancelledError(f"Generation cancelled at version {i+1}/{num_versions}")
+                                
+                                yield item
+                        
+                        def __call__(self, iterable=None, total=None, desc=None, **kwargs):
+                            """Support being called as a function like tqdm(iterable)."""
+                            return ProgressTqdm(iterable=iterable, total=total, desc=desc, **kwargs)
+                        
+                        def update(self, n=1):
+                            """Support manual updates (for compatibility)."""
+                            self.n += n
+                        
+                        def close(self):
+                            """Support close() calls (for compatibility)."""
+                            pass
+                    
+                    # Monkeypatch tqdm in the pipeline module
+                    ace_pipeline_module.tqdm = ProgressTqdm
+                    
+                    try:
+                        # Initial progress update
+                        if progress_callback:
+                            progress_callback(
+                                base_progress,
+                                f"Starting version {i+1}/{num_versions}..."
+                            )
+                        
+                        self.model(
                         audio_duration=duration,
                         prompt=prompt,
                         lyrics=lyrics,
@@ -203,6 +274,10 @@ class ACEStepModel(BaseMusicModel):
                         use_erg_lyric=kwargs.get("use_erg_lyric", True),
                         use_erg_diffusion=kwargs.get("use_erg_diffusion", True),
                     )
+                    
+                    finally:
+                        # Restore original tqdm
+                        ace_pipeline_module.tqdm = original_tqdm
                     
                     # Update progress: version complete
                     if progress_callback:

@@ -8,6 +8,7 @@ import logging
 
 from ..models.schemas import JobStatus, VersionInfo
 from .model_client import ModelServiceClient
+from ..db.queue_db import QueueDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,53 @@ class JobManager:
         self.currently_processing_job_id: Optional[str] = None
         self.model_client = ModelServiceClient()
         self._processing_lock = asyncio.Lock()
+        self.db = QueueDatabase()
+        
+        # Load existing jobs and queue from database
+        self._load_from_database()
+    
+    def _load_from_database(self):
+        """Load jobs and queue from the database on startup."""
+        try:
+            # Load all jobs
+            db_jobs = self.db.get_all_jobs()
+            
+            for job_id, job_data in db_jobs.items():
+                # Convert status string to enum
+                if isinstance(job_data["status"], str):
+                    job_data["status"] = JobStatus(job_data["status"])
+                
+                # Convert versions data to VersionInfo objects if needed
+                if job_data.get("versions") and isinstance(job_data["versions"], list):
+                    version_list = []
+                    for v in job_data["versions"]:
+                        if isinstance(v, dict):
+                            version_list.append(VersionInfo(**v))
+                        else:
+                            version_list.append(v)
+                    job_data["versions"] = version_list
+                
+                # Initialize non-persisted fields
+                job_data["task"] = None
+                
+                self.jobs[job_id] = job_data
+            
+            # Load queue order
+            queue_ids = self.db.get_queue()
+            self.queue = queue_ids
+            
+            # Update queue positions
+            self._update_queue_positions()
+            
+            logger.info(f"Loaded {len(self.jobs)} jobs and {len(self.queue)} queue items from database")
+            
+            # Resume processing if there are pending jobs
+            if self.queue:
+                asyncio.create_task(self._process_next_job())
+                logger.info("Resuming job processing from persisted queue")
+        
+        except Exception as e:
+            logger.error(f"Failed to load from database: {e}", exc_info=True)
     
     def create_job(
         self,
@@ -64,6 +112,10 @@ class JobManager:
         
         # Update queue positions
         self._update_queue_positions()
+        
+        # Persist to database
+        self.db.save_job(job)
+        self.db.add_to_queue(job_id)
         
         # Start processing if no job is currently processing
         if self.currently_processing_job_id is None:
@@ -114,6 +166,9 @@ class JobManager:
             job["progress"] = 0.0
             logger.info(f"Processing job {job_id}")
             
+            # Persist status update to database
+            self.db.update_job(job_id, {"status": JobStatus.PROCESSING, "progress": 0.0})
+            
             # Start generation job on model service
             model_job_id = await self.model_client.start_generation(
                 prompt=job["prompt"],
@@ -127,6 +182,9 @@ class JobManager:
             
             job["model_service_job_id"] = model_job_id
             
+            # Persist model_service_job_id to database
+            self.db.update_job(job_id, {"model_service_job_id": model_job_id})
+            
             # Poll for progress and completion
             while True:
                 # Check if job was cancelled
@@ -138,12 +196,22 @@ class JobManager:
                         logger.warning(f"Failed to cancel model-service job {model_job_id}: {e}")
                     job["status"] = JobStatus.FAILED
                     job["error"] = "Job was cancelled"
+                    
+                    # Persist cancellation to database
+                    self.db.update_job(job_id, {
+                        "status": JobStatus.FAILED,
+                        "error": "Job was cancelled"
+                    })
+                    
                     break
                 
                 # Poll for progress
                 try:
                     progress_data = await self.model_client.get_generation_progress(model_job_id)
                     job["progress"] = progress_data.get("progress", 0.0)
+                    
+                    # Persist progress update to database
+                    self.db.update_job(job_id, {"progress": job["progress"]})
                     
                     # Check status
                     status_data = await self.model_client.get_generation_status(model_job_id)
@@ -171,6 +239,15 @@ class JobManager:
                         
                         job["status"] = JobStatus.COMPLETED
                         job["progress"] = 100.0
+                        
+                        # Persist completion to database
+                        self.db.update_job(job_id, {
+                            "status": JobStatus.COMPLETED,
+                            "progress": 100.0,
+                            "versions": version_list,
+                            "version_paths": job["version_paths"]
+                        })
+                        
                         logger.info(f"Job {job_id} completed with {len(version_list)} versions")
                         break
                     
@@ -178,6 +255,13 @@ class JobManager:
                         error = status_data.get("error", f"Generation {status}")
                         job["status"] = JobStatus.FAILED
                         job["error"] = error
+                        
+                        # Persist failure to database
+                        self.db.update_job(job_id, {
+                            "status": JobStatus.FAILED,
+                            "error": error
+                        })
+                        
                         logger.error(f"Job {job_id} {status}: {error}")
                         break
                     
@@ -193,6 +277,12 @@ class JobManager:
             logger.error(f"Job {job_id} failed: {e}", exc_info=True)
             job["status"] = JobStatus.FAILED
             job["error"] = str(e)
+            
+            # Persist failure to database
+            self.db.update_job(job_id, {
+                "status": JobStatus.FAILED,
+                "error": str(e)
+            })
         finally:
             # Mark as no longer processing and start next job
             if self.currently_processing_job_id == job_id:
@@ -237,6 +327,9 @@ class JobManager:
         if self.currently_processing_job_id == job_id:
             job["cancelled"] = True
             
+            # Persist cancellation to database
+            self.db.update_job(job_id, {"cancelled": True})
+            
             # Cancel model-service job if it exists
             model_job_id = job.get("model_service_job_id")
             if model_job_id:
@@ -255,6 +348,9 @@ class JobManager:
         # Remove from queue
         self.queue.remove(job_id)
         self._update_queue_positions()
+        
+        # Persist removal to database
+        self.db.remove_from_queue(job_id)
         
         logger.info(f"Removed job {job_id} from queue")
         return True
@@ -288,6 +384,9 @@ class JobManager:
         
         # Update all queue positions
         self._update_queue_positions()
+        
+        # Persist reorder to database
+        self.db.reorder_queue(job_id, new_position)
         
         logger.info(f"Reordered job {job_id} to position {new_position}")
         return True
