@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
-  base: process.env.GITHUB_PAGES ? '/omg/' : '/',
+  base: process.env.GITHUB_PAGES === 'true' ? '/omg/' : '/',
   server: {
     port: 5173,
     proxy: {
@@ -12,6 +12,9 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  define: {
+    __BASE_PATH__: JSON.stringify(process.env.GITHUB_PAGES === 'true' ? '/omg/' : '/')
   }
 })
 
