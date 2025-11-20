@@ -44,3 +44,4 @@ SongGeneration/
 *.ttf
 *.woff
 *.woff2
+backend/data/
